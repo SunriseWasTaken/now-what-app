@@ -94,14 +94,33 @@ html, body {
 .st-key-float_panel li,
 .st-key-float_panel label { color: #1e1e1e !important; }
 
-/* Scrollable chat history area */
-.panel-scroll {
+/* Scrollable chat history area (nested st.container(key="chat_log")) */
+.st-key-chat_log {
     flex: 1 1 auto !important;
     overflow-y: auto !important;
     padding: 0 18px 4px 18px !important;
+    min-height: 0 !important;
 }
-.panel-scroll::-webkit-scrollbar { width: 4px; }
-.panel-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+.st-key-chat_log::-webkit-scrollbar { width: 4px; }
+.st-key-chat_log::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+/* ━━ LEFT FLOATING LEGEND PANEL (targets st.container(key="legend_panel")) ━━ */
+.st-key-legend_panel {
+    position: fixed !important;
+    left: 20px !important;
+    top: 20px !important;
+    width: 230px !important;
+    background: #ffffff !important;
+    z-index: 999999 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid #e5e7eb !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+.st-key-legend_panel,
+.st-key-legend_panel p,
+.st-key-legend_panel span { color: #1e1e1e !important; }
 
 /* Chat messages — light mode */
 .st-key-float_panel [data-testid="stChatMessage"] {
@@ -150,7 +169,7 @@ html, body {
     unsafe_allow_html=True,
 )
 
-SHAPEFILE_PATH = "data/London_Ward_CityMerged.shp"
+SHAPEFILE_PATH = "data/Wards_December_2022_Boundaries_UK_BGC_5935341910977814913.geojson"
 RISK_CSV_PATH = "data/newham_ward_risk_table_CDEM.csv"
 
 
@@ -160,13 +179,17 @@ def load_risk_data() -> pd.DataFrame:
 
 
 def _score_color(score: float, min_s: float, max_s: float) -> list[int]:
-    """Semi-transparent fill: cool blue (low risk) → warm red (high risk)."""
+    """Semi-transparent teal fill: pale teal (low risk) → deep teal (high risk).
+
+    Single-hue teal ramp keeps red/orange free for a future equity layer.
+    """
     span = (max_s - min_s) or 1.0
     t = max(0.0, min(1.0, (score - min_s) / span))
-    r = int(59 + t * (239 - 59))
-    g = int(130 + t * (68 - 130))
-    b = int(246 + t * (68 - 246))
-    alpha = int(90 + t * 80)
+    # #99f6e4 (pale teal) → #0f766e (deep teal)
+    r = int(153 + t * (15 - 153))
+    g = int(246 + t * (118 - 246))
+    b = int(228 + t * (110 - 228))
+    alpha = int(150 + t * 30)
     return [r, g, b, alpha]
 
 
@@ -184,19 +207,20 @@ def _geom_to_polygons(geom) -> list[list[list[float]]]:
 @st.cache_data
 def build_polygon_layer_data() -> tuple[list[dict], list[str], list[float]]:
     """
-    Load the London wards shapefile, reproject EPSG:27700 -> EPSG:4326,
-    filter to Newham, merge with the CDEM risk CSV on ward name, and emit
-    flat PolygonLayer features coloured by Final Risk Score (R_final_CDEM).
+    Load the Dec 2022 UK wards boundaries, reproject EPSG:27700 -> EPSG:4326,
+    filter to Newham (LAD22NM), merge with the CDEM risk CSV on ward name
+    (WD22NM == ward), and emit flat PolygonLayer features coloured by
+    Final Risk Score (R_final_CDEM).
 
     Returns (features, unmatched_csv_wards, [center_lon, center_lat]).
     """
     gdf = gpd.read_file(SHAPEFILE_PATH)
     # CRITICAL: UK national grid -> WGS84 GPS coords for Pydeck
     gdf = gdf.to_crs(epsg=4326)
-    newham = gdf[gdf["DISTRICT"] == "Newham"].copy()
+    newham = gdf[gdf["LAD22NM"] == "Newham"].copy()
 
     df = load_risk_data()
-    merged = newham.merge(df, left_on="NAME", right_on="ward", how="inner")
+    merged = newham.merge(df, left_on="WD22NM", right_on="ward", how="inner")
 
     min_s = float(df["R_final_CDEM"].min())
     max_s = float(df["R_final_CDEM"].max())
@@ -235,6 +259,8 @@ polygon_data, unmatched_wards, map_center = build_polygon_layer_data()
 top1 = df.nlargest(1, "R_final_CDEM").iloc[0]
 low1 = df.nsmallest(1, "R_final_CDEM").iloc[0]
 avg_s = df["R_final_CDEM"].mean()
+min_score = float(df["R_final_CDEM"].min())
+max_score = float(df["R_final_CDEM"].max())
 now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
 
 if "messages" not in st.session_state:
@@ -316,6 +342,29 @@ st.pydeck_chart(
     height=1200,
 )
 
+# ── LEFT FLOATING LEGEND PANEL ─────────────────────────────────────────────────
+legend = st.container(key="legend_panel")
+with legend:
+    st.markdown(
+        f"""
+<div style="padding:0.9rem 1rem 1rem;">
+  <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:0 0 10px;">Legend</p>
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Final Risk Score (CDEM)</p>
+  <div style="height:12px;border-radius:6px;
+              background:linear-gradient(90deg,#99f6e4,#0f766e);margin:0 0 5px;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#6b7280;">
+    <span>{min_score:.1f}</span>
+    <span>{max_score:.1f}</span>
+  </div>
+  <p style="font-size:0.68rem;color:#9ca3af;margin:10px 0 0;line-height:1.4;">
+    Deeper teal = higher climate &amp; health risk.
+  </p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
 # ── TRUE FLOATING CONTAINER (right-side UI) ────────────────────────────────────
 panel = st.container(key="float_panel")
 with panel:
@@ -370,11 +419,10 @@ with panel:
             unsafe_allow_html=True,
         )
 
-    st.markdown('<div class="panel-scroll">', unsafe_allow_html=True)
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-    st.markdown("</div>", unsafe_allow_html=True)
+    with st.container(key="chat_log"):
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
     if prompt := st.chat_input("Ask about this map…"):
         st.session_state.messages.append({"role": "user", "content": prompt})
