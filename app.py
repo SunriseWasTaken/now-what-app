@@ -66,7 +66,7 @@ html, body {
     position: fixed !important;
     right: 20px !important;
     top: 20px !important;
-    max-height: calc(100vh - 40px) !important;
+    height: 80vh !important;
     width: 350px !important;
     background: #ffffff !important;
     z-index: 999999 !important;
@@ -77,12 +77,15 @@ html, body {
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
 }
 
-/* Panel hugs its content; inner wrapper stays a flex column without forcing height */
+/* Inner wrapper fills the panel as a flex column */
 .st-key-float_panel > div {
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     overflow: hidden !important;
 }
 
@@ -93,16 +96,33 @@ html, body {
 .st-key-float_panel li,
 .st-key-float_panel label { color: #1e1e1e !important; }
 
-/* Scrollable chat history area (nested st.container(key="chat_log")) */
+/* Scrollable chat history — grows to fill so the input sits at the bottom edge */
 .st-key-chat_log {
-    flex: 0 1 auto !important;
-    max-height: 45vh !important;
+    flex: 1 1 auto !important;
     overflow-y: auto !important;
     padding: 0 18px 4px 18px !important;
     min-height: 0 !important;
 }
 .st-key-chat_log::-webkit-scrollbar { width: 4px; }
 .st-key-chat_log::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+/* Chat area fills the panel between the stats card and the pinned input */
+.st-key-chat_area {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.st-key-chat_area > div {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+/* Keep the input row at its natural height so the message log fills the rest */
+.st-key-chat_area > div:has([data-testid="stChatInput"]) {
+    flex: 0 0 auto !important;
+}
 
 /* ━━ LEFT FLOATING LEGEND PANEL (targets st.container(key="legend_panel")) ━━ */
 @keyframes legendIn {
@@ -113,6 +133,7 @@ html, body {
     position: fixed !important;
     left: 20px !important;
     top: 20px !important;
+    height: 75vh !important;
     width: 250px !important;
     background: rgba(255, 255, 255, 0.60) !important;
     z-index: 999999 !important;
@@ -143,9 +164,35 @@ html, body {
 .st-key-share_legend button:hover,
 .st-key-close_legend button:hover { color: #1e1e1e !important; background: rgba(0,0,0,0.05) !important; }
 
-/* Layer segmented control — light mode */
-.st-key-layer_select [data-baseweb="button-group"] { background: #f3f4f6 !important; border-radius: 8px !important; }
-.st-key-layer_select button { color: #374151 !important; }
+/* Layer segmented control — light mode (fix blacked-out unselected options) */
+.st-key-layer_select [data-testid="stButtonGroup"],
+.st-key-layer_select [data-baseweb="button-group"] {
+    background: #f3f4f6 !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+    gap: 2px !important;
+}
+/* Unselected options: transparent on the light track, dark readable text */
+.st-key-layer_select button[data-testid="stBaseButton-segmented_control"] {
+    background: transparent !important;
+    color: #374151 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+.st-key-layer_select button[data-testid="stBaseButton-segmented_control"] p {
+    color: #374151 !important;
+}
+/* Selected option: white pill */
+.st-key-layer_select button[data-testid="stBaseButton-segmented_controlActive"] {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: none !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+}
+.st-key-layer_select button[data-testid="stBaseButton-segmented_controlActive"] p {
+    color: #0f172a !important;
+}
 
 /* Reopen-legend toggle button (shown when legend closed) */
 .st-key-open_legend {
@@ -163,6 +210,25 @@ html, body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     font-size: 0.8rem !important;
     font-weight: 600 !important;
+}
+
+/* Reopen-panel toggle (shown when the whole right overlay is hidden) */
+.st-key-open_panel {
+    position: fixed !important;
+    right: 20px !important;
+    top: 20px !important;
+    z-index: 999999 !important;
+    animation: legendIn 0.22s ease-out !important;
+}
+.st-key-open_panel button {
+    background: rgba(255,255,255,0.95) !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    color: #1e1e1e !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    font-size: 1.0rem !important;
+    font-weight: 600 !important;
+    padding: 6px 12px !important;
 }
 
 /* Chat messages — light mode */
@@ -185,11 +251,14 @@ html, body {
 
 /* Panel header row (title + functional menu button) */
 .st-key-panel_header {
-    padding: 1.0rem 1.1rem 0.75rem 1.1rem !important;
+    padding: 0.8rem 1.1rem 0.55rem 1.1rem !important;
     border-bottom: 1px solid #e5e7eb !important;
 }
-.st-key-panel_header [data-testid="stHorizontalBlock"] { gap: 0 !important; align-items: center !important; }
+.st-key-panel_header [data-testid="stHorizontalBlock"] { gap: 0 !important; align-items: center !important; min-height: 0 !important; }
+.st-key-panel_header [data-testid="stColumn"] { min-height: 0 !important; }
 .st-key-panel_header [data-testid="stColumn"]:last-child { display: flex !important; justify-content: flex-end !important; }
+.st-key-panel_header [data-testid="stElementContainer"],
+.st-key-panel_header [data-testid="stMarkdown"] { margin: 0 !important; }
 .st-key-toggle_chat button {
     background: transparent !important;
     border: none !important;
@@ -207,7 +276,7 @@ html, body {
     position: relative !important;
     bottom: auto !important;
     flex-shrink: 0 !important;
-    padding: 0.5rem 1rem 0.75rem 1rem !important;
+    padding: 0.6rem 1rem !important;
     border-top: 1px solid #e5e7eb !important;
     background: #ffffff !important;
     margin: 0 !important;
@@ -232,11 +301,12 @@ html, body {
     outline: none !important;
 }
 .st-key-float_panel [data-testid="stChatInput"] textarea::placeholder { color: #9ca3af !important; }
-/* Send button — round, absolutely pinned to the right edge of the input pill */
+/* Send button — round, vertically centered at the right end of the input pill */
 .st-key-float_panel [data-testid="stChatInputSubmitButton"] {
     position: absolute !important;
-    right: 1.45rem !important;
-    bottom: 1.0rem !important;
+    right: 1.5rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
     width: 30px !important;
     height: 30px !important;
     min-height: 30px !important;
@@ -431,9 +501,9 @@ now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
 if "legend_open" not in st.session_state:
     st.session_state.legend_open = True
 
-# Chat show/hide state (toggled by the panel header menu button)
-if "chat_open" not in st.session_state:
-    st.session_state.chat_open = True
+# Right overlay show/hide state (toggled by the panel header menu button)
+if "panel_open" not in st.session_state:
+    st.session_state.panel_open = True
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -635,9 +705,8 @@ with panel:
                 unsafe_allow_html=True,
             )
         with head_r:
-            chat_toggle_help = "Hide chat" if st.session_state.chat_open else "Show chat"
-            if st.button("☰", key="toggle_chat", help=chat_toggle_help):
-                st.session_state.chat_open = not st.session_state.chat_open
+            if st.button("☰", key="toggle_chat", help="Hide panel"):
+                st.session_state.panel_open = False
                 st.rerun()
 
     st.markdown(
@@ -665,7 +734,7 @@ with panel:
         unsafe_allow_html=True,
     )
 
-    if st.session_state.chat_open:
+    with st.container(key="chat_area"):
         with st.container(key="chat_log"):
             for msg in st.session_state.messages:
                 with st.chat_message(msg["role"]):
@@ -675,3 +744,15 @@ with panel:
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.session_state.messages.append({"role": "assistant", "content": analyst_reply(prompt)})
             st.rerun()
+
+# Hide the ENTIRE right overlay (fade + slide) when closed; show a reopen toggle.
+# The panel stays mounted so the transition animates; the toggle brings it back.
+if not st.session_state.panel_open:
+    st.markdown(
+        "<style>.st-key-float_panel{opacity:0 !important;"
+        "transform:translateX(24px) scale(0.98) !important;pointer-events:none !important;}</style>",
+        unsafe_allow_html=True,
+    )
+    if st.button("☰", key="open_panel", help="Show panel"):
+        st.session_state.panel_open = True
+        st.rerun()
