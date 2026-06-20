@@ -284,6 +284,21 @@ def _equity_color(score: float, min_s: float, max_s: float) -> list[int]:
     return _ramp_color(score, min_s, max_s, EQUITY_LOW, EQUITY_HIGH, 150, 195)
 
 
+def _blend_color(risk: float, eqt: float, rmin: float, rmax: float,
+                 emin: float, emax: float) -> list[int]:
+    """Bivariate blend: teal encodes risk, then the colour is pulled toward deep
+    red as equity severity rises. A ward that is both high-risk and high-gap
+    reads as a dark, saturated red-teal mix."""
+    base = _teal_color(risk, rmin, rmax)
+    span = (emax - emin) or 1.0
+    t = max(0.0, min(1.0, (eqt - emin) / span))
+    r = int(base[0] + t * (EQUITY_HIGH[0] - base[0]))
+    g = int(base[1] + t * (EQUITY_HIGH[1] - base[1]))
+    b = int(base[2] + t * (EQUITY_HIGH[2] - base[2]))
+    alpha = int(base[3] + t * (205 - base[3]))
+    return [r, g, b, alpha]
+
+
 def _geom_to_polygons(geom) -> list[list[list[float]]]:
     """Return a list of exterior rings ([[lon, lat], ...]) for Polygon/MultiPolygon."""
     if geom is None or geom.is_empty:
@@ -344,6 +359,12 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
             sev = rec["equity_severity"]
             color = _equity_color(sev, esev_min, esev_max)
             value = f"Equity severity: {sev:.2f}"
+        elif layer == "Both":
+            color = _blend_color(
+                rec["r_final"], rec["equity_severity"],
+                rfin_min, rfin_max, esev_min, esev_max,
+            )
+            value = f"Risk {rec['r_final']:.2f} · Equity {rec['equity_severity']:.2f}"
         else:  # Risk
             color = _teal_color(rec["r_final"], rfin_min, rfin_max)
             value = f"Final Risk Score: {rec['r_final']:.2f}"
@@ -468,7 +489,34 @@ st.pydeck_chart(
 
 # ── LEFT FLOATING LEGEND PANEL (or reopen toggle) ─────────────────────────────
 def _render_legend_body(layer: str) -> None:
-    if layer == "Equity":
+    if layer == "Both":
+        st.markdown(
+            f"""
+<div style="padding:0.2rem 0.9rem 0.9rem;">
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Risk (teal)</p>
+  <div style="height:10px;border-radius:5px;
+              background:linear-gradient(90deg,#99f6e4,#0f766e);margin:0 0 4px;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#6b7280;margin:0 0 12px;">
+    <span>{rfin_min:.1f}</span>
+    <span>{rfin_max:.1f}</span>
+  </div>
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Equity gap (red)</p>
+  <div style="height:10px;border-radius:5px;
+              background:linear-gradient(90deg,#fed7aa,#991b1b);margin:0 0 4px;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#6b7280;">
+    <span>Lower</span>
+    <span>Higher</span>
+  </div>
+  <p style="font-size:0.68rem;color:#9ca3af;margin:10px 0 0;line-height:1.4;">
+    Bivariate blend: teal = risk, shifting to red where the equity gap is severe.
+  </p>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+    elif layer == "Equity":
         st.markdown(
             """
 <div style="padding:0.2rem 0.9rem 0.9rem;">
@@ -528,7 +576,7 @@ if st.session_state.legend_open:
 
         st.segmented_control(
             "Layer",
-            options=["Risk", "Equity"],
+            options=["Risk", "Equity", "Both"],
             default="Risk",
             key="layer_select",
             label_visibility="collapsed",
