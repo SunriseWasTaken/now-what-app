@@ -1,10 +1,8 @@
-import numpy as np
+import geopandas as gpd
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
 from datetime import datetime
-from scipy.spatial import Voronoi
-from shapely.geometry import MultiPoint, Point, Polygon
 
 st.set_page_config(
     page_title="Newham Risk Dashboard",
@@ -152,95 +150,87 @@ html, body {
     unsafe_allow_html=True,
 )
 
-# ── Ward centroids ─────────────────────────────────────────────────────────────
-WARD_COORDS: dict[str, tuple[float, float]] = {
-    "Canning Town North":                (0.009,  51.514),
-    "Custom House":                      (0.030,  51.511),
-    "East Ham South":                    (0.053,  51.525),
-    "Plaistow South":                    (0.020,  51.527),
-    "Wall End":                          (0.056,  51.537),
-    "Beckton":                           (0.068,  51.510),
-    "Forest Gate South":                 (0.038,  51.543),
-    "Canning Town South":                (0.012,  51.507),
-    "West Ham":                          (0.009,  51.536),
-    "Plaistow West & Canning Town East": (0.010,  51.522),
-    "Royal Albert":                      (0.043,  51.503),
-    "Plaistow North":                    (0.020,  51.534),
-    "Stratford Olympic Park":            (0.014,  51.545),
-    "Boleyn":                            (0.040,  51.536),
-    "Maryland":                          (0.018,  51.548),
-    "Manor Park":                        (0.060,  51.543),
-    "East Ham":                          (0.048,  51.537),
-    "Royal Victoria":                    (0.022,  51.503),
-    "Little Ilford":                     (0.058,  51.549),
-    "Forest Gate North":                 (0.038,  51.549),
-    "Green Street East":                 (0.050,  51.536),
-    "Green Street West":                 (0.044,  51.534),
-    "Stratford":                         (0.003,  51.542),
-    "Plashet":                           (0.046,  51.539),
-}
+SHAPEFILE_PATH = "data/London_Ward_CityMerged.shp"
+RISK_CSV_PATH = "data/newham_ward_risk_table_CDEM.csv"
 
 
 @st.cache_data
 def load_risk_data() -> pd.DataFrame:
-    return pd.read_csv("data/newham_ward_risk_table_CDEM.csv")
+    return pd.read_csv(RISK_CSV_PATH)
+
+
+def _score_color(score: float, min_s: float, max_s: float) -> list[int]:
+    """Semi-transparent fill: cool blue (low risk) → warm red (high risk)."""
+    span = (max_s - min_s) or 1.0
+    t = max(0.0, min(1.0, (score - min_s) / span))
+    r = int(59 + t * (239 - 59))
+    g = int(130 + t * (68 - 130))
+    b = int(246 + t * (68 - 246))
+    alpha = int(90 + t * 80)
+    return [r, g, b, alpha]
+
+
+def _geom_to_polygons(geom) -> list[list[list[float]]]:
+    """Return a list of exterior rings ([[lon, lat], ...]) for Polygon/MultiPolygon."""
+    if geom is None or geom.is_empty:
+        return []
+    if geom.geom_type == "Polygon":
+        return [[[x, y] for x, y in geom.exterior.coords]]
+    if geom.geom_type == "MultiPolygon":
+        return [[[x, y] for x, y in part.exterior.coords] for part in geom.geoms]
+    return []
 
 
 @st.cache_data
-def build_polygon_layer_data(df: pd.DataFrame) -> list[dict]:
-    """Voronoi-tessellate ward centroids into flat polygons coloured by Final Risk Score."""
-    risk = {
-        row["ward"]: (float(row["R_final_CDEM"]), int(row["rank_CDEM"]))
-        for _, row in df.iterrows()
-    }
-    ward_names = list(WARD_COORDS.keys())
-    pts = np.array(list(WARD_COORDS.values()))
-    clip = MultiPoint([Point(p) for p in pts]).convex_hull.buffer(0.014)
+def build_polygon_layer_data() -> tuple[list[dict], list[str], list[float]]:
+    """
+    Load the London wards shapefile, reproject EPSG:27700 -> EPSG:4326,
+    filter to Newham, merge with the CDEM risk CSV on ward name, and emit
+    flat PolygonLayer features coloured by Final Risk Score (R_final_CDEM).
 
-    far = 0.30
-    mirrors = np.concatenate(
-        [pts + [far, 0], pts - [far, 0], pts + [0, far], pts - [0, far]]
-    )
-    vor = Voronoi(np.vstack([pts, mirrors]))
+    Returns (features, unmatched_csv_wards, [center_lon, center_lat]).
+    """
+    gdf = gpd.read_file(SHAPEFILE_PATH)
+    # CRITICAL: UK national grid -> WGS84 GPS coords for Pydeck
+    gdf = gdf.to_crs(epsg=4326)
+    newham = gdf[gdf["DISTRICT"] == "Newham"].copy()
 
-    scores = [risk[w][0] for w in ward_names if w in risk]
-    min_s, max_s = min(scores), max(scores)
+    df = load_risk_data()
+    merged = newham.merge(df, left_on="NAME", right_on="ward", how="inner")
 
-    def score_color(score: float) -> list[int]:
-        """Semi-transparent fill: cool blue (low risk) → warm red (high risk)."""
-        t = max(0.0, min(1.0, (score - min_s) / (max_s - min_s)))
-        r = int(59 + t * (239 - 59))
-        g = int(130 + t * (68 - 130))
-        b = int(246 + t * (68 - 246))
-        alpha = int(90 + t * 80)
-        return [r, g, b, alpha]
+    min_s = float(df["R_final_CDEM"].min())
+    max_s = float(df["R_final_CDEM"].max())
 
-    features = []
-    for i, name in enumerate(ward_names):
-        region = vor.regions[vor.point_region[i]]
-        if not region or -1 in region:
-            continue
-        poly = Polygon([vor.vertices[j] for j in region]).intersection(clip)
-        if poly.is_empty:
-            continue
-        if poly.geom_type == "MultiPolygon":
-            poly = max(poly.geoms, key=lambda p: p.area)
+    features: list[dict] = []
+    for _, row in merged.iterrows():
+        score = float(row["R_final_CDEM"])
+        rank = int(row["rank_CDEM"])
+        color = _score_color(score, min_s, max_s)
+        for ring in _geom_to_polygons(row.geometry):
+            features.append(
+                {
+                    "polygon":    ring,
+                    "ward":       row["ward"],
+                    "score":      round(score, 2),
+                    "rank":       rank,
+                    "fill_color": color,
+                }
+            )
 
-        score, rank = risk.get(name, (0.0, 0))
-        features.append(
-            {
-                "polygon":    [[x, y] for x, y in poly.exterior.coords],
-                "ward":       name,
-                "score":      round(score, 2),
-                "rank":       rank,
-                "fill_color": score_color(score),
-            }
-        )
-    return features
+    matched = set(merged["ward"])
+    unmatched = sorted(set(df["ward"]) - matched)
+
+    if len(merged):
+        center = merged.geometry.union_all().centroid
+        center_ll = [float(center.x), float(center.y)]
+    else:
+        center_ll = [0.033, 51.527]
+
+    return features, unmatched, center_ll
 
 
 df = load_risk_data()
-polygon_data = build_polygon_layer_data(df)
+polygon_data, unmatched_wards, map_center = build_polygon_layer_data()
 
 top1 = df.nlargest(1, "R_final_CDEM").iloc[0]
 low1 = df.nsmallest(1, "R_final_CDEM").iloc[0]
@@ -313,8 +303,8 @@ st.pydeck_chart(
     pdk.Deck(
         layers=[poly_layer],
         initial_view_state=pdk.ViewState(
-            longitude=0.033,
-            latitude=51.527,
+            longitude=map_center[0],
+            latitude=map_center[1],
             zoom=12.2,
             pitch=0,
             bearing=0,
@@ -364,6 +354,21 @@ with panel:
 """,
         unsafe_allow_html=True,
     )
+
+    n_mapped = len(df) - len(unmatched_wards)
+    if unmatched_wards:
+        st.markdown(
+            f"""
+<div style="padding:0.55rem 1.1rem;background:#fffbeb;border-bottom:1px solid #fde68a;">
+  <p style="font-size:0.68rem;color:#92400e;margin:0;line-height:1.4;">
+    Showing {n_mapped} of {len(df)} wards as polygons. {len(unmatched_wards)} wards in the
+    risk table have no boundary match in the 2018 shapefile
+    (e.g. {', '.join(unmatched_wards[:3])}…).
+  </p>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
 
     st.markdown('<div class="panel-scroll">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
