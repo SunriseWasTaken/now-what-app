@@ -5,7 +5,7 @@ import streamlit as st
 from datetime import datetime
 
 st.set_page_config(
-    page_title="Newham Risk Dashboard",
+    page_title="London Climate & Health Risk Dashboard",
     page_icon="🗺️",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -96,33 +96,76 @@ html, body {
 .st-key-float_panel li,
 .st-key-float_panel label { color: #1e1e1e !important; }
 
-/* Scrollable chat history — grows to fill so the input sits at the bottom edge */
-.st-key-chat_log {
+/* ━━ LEADERBOARD (right panel) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* Let the leaderboard markdown element fill the panel below the header so its
+   internal list scrolls instead of the whole panel. */
+.st-key-float_panel > div > [data-testid="stElementContainer"]:last-child {
     flex: 1 1 auto !important;
-    overflow-y: auto !important;
-    padding: 0 18px 4px 18px !important;
     min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
-.st-key-chat_log::-webkit-scrollbar { width: 4px; }
-.st-key-chat_log::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+.st-key-float_panel > div > [data-testid="stElementContainer"]:last-child [data-testid="stMarkdown"],
+.st-key-float_panel > div > [data-testid="stElementContainer"]:last-child [data-testid="stMarkdown"] > div {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
 
-/* Chat area fills the panel between the stats card and the pinned input */
-.st-key-chat_area {
+/* Scroll container — scrollbar pinned to the LEFT via rtl, content stays ltr */
+.lb-scroll {
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
+    overflow-y: auto !important;
+    direction: rtl !important;
 }
-.st-key-chat_area > div {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
+.lb-inner { direction: ltr !important; padding: 12px 14px 14px 14px !important; }
+.lb-scroll::-webkit-scrollbar { width: 6px; }
+.lb-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+.lb-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Featured #1 card — larger, emphasised */
+.lb-feature {
+    background: #f9fafb;
+    border: 1px solid #eceef1;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
 }
-/* Keep the input row at its natural height so the message log fills the rest */
-.st-key-chat_area > div:has([data-testid="stChatInput"]) {
-    flex: 0 0 auto !important;
+.lb-feat-top { display: flex; align-items: baseline; gap: 10px; }
+.lb-feat-rank { font-size: 1.5rem; font-weight: 800; color: #0f766e; line-height: 1; }
+.lb-eyebrow {
+    font-size: 0.62rem; color: #6b7280; text-transform: uppercase;
+    letter-spacing: 0.06em; font-weight: 700;
 }
+.lb-feat-ward { font-size: 1.35rem; font-weight: 800; color: #1e1e1e; margin: 8px 0 12px; line-height: 1.1; }
+.lb-feat-stats { display: flex; gap: 2rem; }
+.lb-stat-label { font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+.lb-feat-score { font-size: 1.1rem; font-weight: 800; color: #1e1e1e; margin: 2px 0 0; }
+
+.lb-section {
+    font-size: 0.62rem; color: #9ca3af; text-transform: uppercase;
+    letter-spacing: 0.06em; font-weight: 700; margin: 0 2px 8px; 
+}
+
+/* Compact, equally-sized ranking rows */
+.lb-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    background: #ffffff;
+    border: 1px solid #f1f3f5;
+}
+.lb-row:hover { background: #f9fafb; }
+.lb-row-rank { font-size: 0.8rem; font-weight: 700; color: #9ca3af; width: 30px; flex: 0 0 auto; }
+.lb-row-ward { font-size: 0.85rem; font-weight: 600; color: #1e1e1e; flex: 1 1 auto;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-row-bar { width: 6px; height: 18px; border-radius: 3px; flex: 0 0 auto; }
+.lb-row-score { font-size: 0.85rem; font-weight: 700; color: #1e1e1e; width: 42px; text-align: right; flex: 0 0 auto; }
 
 /* ━━ LEFT FLOATING LEGEND PANEL (targets st.container(key="legend_panel")) ━━ */
 @keyframes legendIn {
@@ -148,6 +191,22 @@ html, body {
 .st-key-legend_panel p,
 .st-key-legend_panel span { color: #1e1e1e !important; }
 .st-key-legend_panel [data-testid="stHorizontalBlock"] { gap: 0.25rem !important; align-items: center !important; }
+
+/* Borough selector inside the legend */
+.st-key-borough_select { padding: 2px 12px 6px 12px !important; }
+.st-key-borough_select label p {
+    font-size: 0.68rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    font-weight: 600 !important;
+    color: #6b7280 !important;
+}
+.st-key-borough_select [data-baseweb="select"] > div {
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    border: 1px solid #e5e7eb !important;
+    color: #1e1e1e !important;
+}
 
 /* Legend title-bar icon buttons (share + close) */
 .st-key-share_legend button,
@@ -329,7 +388,24 @@ html, body {
 )
 
 SHAPEFILE_PATH = "data/Wards_December_2022_Boundaries_UK_BGC_5935341910977814913.geojson"
-RISK_CSV_PATH = "data/newham_ward_risk_table_CDEM.csv"
+
+# ── Borough config — each entry drives the risk CSV, the shapefile (LAD22NM)
+# filter, and the default map view used when that borough is selected. ─────────
+BOROUGHS: dict[str, dict] = {
+    "Newham": {
+        "csv": "data/newham_ward_risk_table_CDEM.csv",
+        "lad_match": "Newham",             # matched against LAD22NM (contains)
+        "fallback_center": [0.033, 51.527],
+        "zoom": 12.2,
+    },
+    "Kensington & Chelsea": {
+        "csv": "data/kc_ward_risk_table_FINAL.csv",
+        "lad_match": "Kensington",         # "Kensington and Chelsea"
+        "fallback_center": [-0.195, 51.500],
+        "zoom": 12.6,
+    },
+}
+DEFAULT_BOROUGH = "Newham"
 
 
 def _normalize(s: pd.Series) -> pd.Series:
@@ -341,8 +417,14 @@ def _normalize(s: pd.Series) -> pd.Series:
 
 
 @st.cache_data
-def load_risk_data() -> pd.DataFrame:
-    df = pd.read_csv(RISK_CSV_PATH)
+def load_risk_data(borough: str) -> pd.DataFrame:
+    df = pd.read_csv(BOROUGHS[borough]["csv"])
+    # Borough tables differ slightly in their columns; alias the ones the rest
+    # of the app reads so everything downstream stays borough-agnostic.
+    if "imd_score" not in df.columns and "imd_score_proxy" in df.columns:
+        df["imd_score"] = df["imd_score_proxy"]
+    if "rank_CDEM" not in df.columns and "rank" in df.columns:
+        df["rank_CDEM"] = df["rank"]
     # ── Continuous "Equity Severity" ──────────────────────────────────────────
     # The PRD defines the equity gap as the COLLISION of high deprivation (D)
     # and low mental-health service capacity. In this table M is the inverse
@@ -410,22 +492,23 @@ def _geom_to_polygons(geom) -> list[list[list[float]]]:
 
 
 @st.cache_data
-def load_ward_geometry() -> tuple[list[dict], list[float]]:
+def load_ward_geometry(borough: str) -> tuple[list[dict], list[float]]:
     """
     Load the Dec 2022 UK wards boundaries once, reproject EPSG:27700 -> EPSG:4326,
-    filter to Newham (LAD22NM), merge with the risk CSV (WD22NM == ward), and
-    return per-ring records carrying both the R_final and equity_flag values so
-    the active layer can be coloured without re-reading the geometry.
+    filter to the selected borough (LAD22NM), merge with that borough's risk CSV
+    (WD22NM == ward), and return per-ring records carrying R_final and equity
+    values so the active layer can be coloured without re-reading the geometry.
 
     Returns (records, [center_lon, center_lat]).
     """
+    cfg = BOROUGHS[borough]
     gdf = gpd.read_file(SHAPEFILE_PATH)
     # CRITICAL: UK national grid -> WGS84 GPS coords for Pydeck
     gdf = gdf.to_crs(epsg=4326)
-    newham = gdf[gdf["LAD22NM"] == "Newham"].copy()
+    sel = gdf[gdf["LAD22NM"].str.contains(cfg["lad_match"], case=False, na=False)].copy()
 
-    df_local = load_risk_data()
-    merged = newham.merge(df_local, left_on="WD22NM", right_on="ward", how="inner")
+    df_local = load_risk_data(borough)
+    merged = sel.merge(df_local, left_on="WD22NM", right_on="ward", how="inner")
 
     records: list[dict] = []
     for _, row in merged.iterrows():
@@ -444,9 +527,70 @@ def load_ward_geometry() -> tuple[list[dict], list[float]]:
         center = merged.geometry.union_all().centroid
         center_ll = [float(center.x), float(center.y)]
     else:
-        center_ll = [0.033, 51.527]
+        center_ll = cfg["fallback_center"]
 
     return records, center_ll
+
+
+def build_leaderboard_html(df: pd.DataFrame, layer: str,
+                           rfin_min: float, rfin_max: float,
+                           esev_min: float, esev_max: float) -> str:
+    """Full ranking leaderboard for the active layer: a large featured #1 card
+    followed by compact, equally-sized rows for the rest. Scrolls on its own."""
+    if layer == "Equity":
+        metric, unit_label = "equity_severity", "Equity Severity"
+        mn, mx = esev_min, esev_max
+        ramp = _equity_color
+    else:  # Risk and Both rank by Final Risk Score
+        metric, unit_label = "R_final", "Risk Score"
+        mn, mx = rfin_min, rfin_max
+        ramp = _teal_color
+
+    ranked = df.sort_values(metric, ascending=False).reset_index(drop=True)
+    total = len(ranked)
+
+    def _rgb(score: float) -> str:
+        c = ramp(float(score), mn, mx)
+        return f"rgb({c[0]},{c[1]},{c[2]})"
+
+    top = ranked.iloc[0]
+    top_accent = _rgb(top[metric])
+    feature = f"""
+<div class="lb-feature" style="border-left:5px solid {top_accent};">
+  <div class="lb-feat-top">
+    <span class="lb-feat-rank">#1</span>
+    <span class="lb-eyebrow">Highest {unit_label}</span>
+  </div>
+  <p class="lb-feat-ward">{top['ward']}</p>
+  <div class="lb-feat-stats">
+    <div><p class="lb-stat-label">{unit_label}</p>
+         <p class="lb-feat-score">{top[metric]:.2f}</p></div>
+    <div><p class="lb-stat-label">Rank</p>
+         <p class="lb-feat-score">#1 / {total}</p></div>
+  </div>
+</div>
+"""
+
+    rows = []
+    for i in range(1, total):
+        r = ranked.iloc[i]
+        accent = _rgb(r[metric])
+        rows.append(f"""
+<div class="lb-row">
+  <span class="lb-row-rank">#{i + 1}</span>
+  <span class="lb-row-ward">{r['ward']}</span>
+  <span class="lb-row-bar" style="background:{accent};"></span>
+  <span class="lb-row-score">{r[metric]:.2f}</span>
+</div>
+""")
+
+    return (
+        '<div class="lb-scroll"><div class="lb-inner">'
+        + feature
+        + '<p class="lb-section">Full Ranking</p>'
+        + "".join(rows)
+        + "</div></div>"
+    )
 
 
 def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: float,
@@ -478,8 +622,11 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
     return features
 
 
-df = load_risk_data()
-ward_records, map_center = load_ward_geometry()
+# Selected borough (the selectbox in the legend writes to this key; read with a
+# default so the very first run before the widget mounts still works).
+selected_borough = st.session_state.get("borough_select", DEFAULT_BOROUGH)
+df = load_risk_data(selected_borough)
+ward_records, map_center = load_ward_geometry(selected_borough)
 
 # Active layer (widget below writes to this key; read with a default for first run)
 active_layer = st.session_state.get("layer_select", "Risk")
@@ -492,9 +639,6 @@ polygon_data = build_features(
     ward_records, active_layer, rfin_min, rfin_max, esev_min, esev_max
 )
 
-top1 = df.nlargest(1, "R_final").iloc[0]
-low1 = df.nsmallest(1, "R_final").iloc[0]
-avg_s = df["R_final"].mean()
 now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
 
 # Legend open/closed state
@@ -504,45 +648,6 @@ if "legend_open" not in st.session_state:
 # Right overlay show/hide state (toggled by the panel header menu button)
 if "panel_open" not in st.session_state:
     st.session_state.panel_open = True
-
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                f"Welcome to the Newham Risk Dashboard. The highest-risk ward is "
-                f"**{top1['ward']}** (Final Risk Score **{top1['R_final']:.2f}**). "
-                f"Ask me about any ward or risk factor."
-            ),
-        }
-    ]
-
-
-def analyst_reply(prompt: str) -> str:
-    p = prompt.lower()
-    for ward in df["ward"].tolist():
-        if ward.lower() in p:
-            r = df[df["ward"] == ward].iloc[0]
-            return (
-                f"**{ward}** — Final Risk Score **{r['R_final']:.2f}** "
-                f"(rank #{int(r['rank_CDEM'])}/24).  \n"
-                f"IMD {r['imd_score']:,.0f} · Air quality {r['air_quality_combined']:.2f} · "
-                f"Equity flagged: {'Yes' if r['equity_flag'] else 'No'}."
-            )
-    if any(k in p for k in ["highest", "worst", "top", "most"]):
-        return f"Highest risk: **{top1['ward']}** (score **{top1['R_final']:.2f}**)."
-    if any(k in p for k in ["lowest", "safest", "least"]):
-        return f"Lowest risk: **{low1['ward']}** (score **{low1['R_final']:.2f}**)."
-    if any(k in p for k in ["equity", "flag", "deprivation", "capacity"]):
-        top_eq = df.nlargest(3, "equity_severity")["ward"].tolist()
-        return (
-            "Equity severity = collision of high deprivation (D) and low service "
-            f"capacity (M). Most severe gaps: **{', '.join(top_eq)}**."
-        )
-    if any(k in p for k in ["average", "mean", "borough"]):
-        return f"Borough average Final Risk Score: **{avg_s:.2f}**."
-    return "Try asking about a specific ward, e.g. *'Tell me about Beckton'*."
-
 
 # ── FULL-SCREEN MAP (PolygonLayer, light basemap) ─────────────────────────────
 poly_layer = pdk.Layer(
@@ -579,7 +684,7 @@ st.pydeck_chart(
         initial_view_state=pdk.ViewState(
             longitude=map_center[0],
             latitude=map_center[1],
-            zoom=12.2,
+            zoom=BOROUGHS[selected_borough]["zoom"],
             pitch=0,
             bearing=0,
         ),
@@ -588,6 +693,9 @@ st.pydeck_chart(
     ),
     use_container_width=True,
     height=1200,
+    # Re-key per borough so the deck remounts and re-applies the centred view
+    # when the borough toggle changes (initial_view_state only binds on mount).
+    key=f"deck_{selected_borough}",
 )
 
 # ── LEFT FLOATING LEGEND PANEL (or reopen toggle) ─────────────────────────────
@@ -677,6 +785,12 @@ if st.session_state.legend_open:
                 st.session_state.legend_open = False
                 st.rerun()
 
+        st.selectbox(
+            "Select Borough",
+            options=list(BOROUGHS.keys()),
+            key="borough_select",
+        )
+
         st.segmented_control(
             "Layer",
             options=["Risk", "Equity", "Both"],
@@ -699,7 +813,7 @@ with panel:
             st.markdown(
                 f"""
 <p style="font-size:0.68rem;color:#6b7280;margin:0;text-transform:uppercase;
-          letter-spacing:0.05em;font-weight:600;">Newham Risk Dashboard</p>
+          letter-spacing:0.05em;font-weight:600;">{selected_borough} Risk Dashboard</p>
 <p style="font-size:0.72rem;color:#9ca3af;margin:4px 0 0;">{now_str}</p>
 """,
                 unsafe_allow_html=True,
@@ -710,40 +824,11 @@ with panel:
                 st.rerun()
 
     st.markdown(
-        f"""
-<div style="padding:0.9rem 1.1rem;border-bottom:1px solid #e5e7eb;">
-  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 4px;text-transform:uppercase;
-            letter-spacing:0.05em;font-weight:600;">Highest Risk Ward</p>
-  <p style="font-size:1rem;font-weight:700;color:#1e1e1e;margin:0 0 8px;">{top1['ward']}</p>
-  <div style="display:flex;gap:1.4rem;">
-    <div>
-      <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Risk Score</p>
-      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">{top1['R_final']:.2f}</p>
-    </div>
-    <div>
-      <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Rank</p>
-      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">#1 / 24</p>
-    </div>
-    <div>
-      <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Borough Avg</p>
-      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">{avg_s:.2f}</p>
-    </div>
-  </div>
-</div>
-""",
+        build_leaderboard_html(
+            df, active_layer, rfin_min, rfin_max, esev_min, esev_max
+        ),
         unsafe_allow_html=True,
     )
-
-    with st.container(key="chat_area"):
-        with st.container(key="chat_log"):
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-        if prompt := st.chat_input("Ask about this map…"):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            st.session_state.messages.append({"role": "assistant", "content": analyst_reply(prompt)})
-            st.rerun()
 
 # Hide the ENTIRE right overlay (fade + slide) when closed; show a reopen toggle.
 # The panel stays mounted so the transition animates; the toggle brings it back.
