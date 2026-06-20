@@ -115,8 +115,6 @@ html, body {
     top: 20px !important;
     width: 250px !important;
     background: rgba(255, 255, 255, 0.60) !important;
-    backdrop-filter: blur(10px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
     z-index: 999999 !important;
     border-radius: 10px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
@@ -158,8 +156,7 @@ html, body {
     animation: legendIn 0.22s ease-out !important;
 }
 .st-key-open_legend button {
-    background: rgba(255,255,255,0.9) !important;
-    backdrop-filter: blur(10px) !important;
+    background: rgba(255,255,255,0.95) !important;
     border: 1px solid #e5e7eb !important;
     border-radius: 10px !important;
     color: #1e1e1e !important;
@@ -183,12 +180,34 @@ html, body {
     color: #1e1e1e !important;
 }
 
-/* Chat input — pinned at bottom of the floating container, light mode */
+/* Trim the default gap between panel sections to kill dead space */
+.st-key-float_panel [data-testid="stVerticalBlock"] { gap: 0.35rem !important; }
+
+/* Panel header row (title + functional menu button) */
+.st-key-panel_header {
+    padding: 1.0rem 1.1rem 0.75rem 1.1rem !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+.st-key-panel_header [data-testid="stHorizontalBlock"] { gap: 0 !important; align-items: center !important; }
+.st-key-panel_header [data-testid="stColumn"]:last-child { display: flex !important; justify-content: flex-end !important; }
+.st-key-toggle_chat button {
+    background: transparent !important;
+    border: none !important;
+    color: #6b7280 !important;
+    padding: 2px 6px !important;
+    min-height: 0 !important;
+    font-size: 1.15rem !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+}
+.st-key-toggle_chat button:hover { color: #1e1e1e !important; background: rgba(0,0,0,0.05) !important; }
+
+/* Chat input — light mode; send button rides at the right end of the pill */
 .st-key-float_panel [data-testid="stChatInput"] {
     position: relative !important;
     bottom: auto !important;
     flex-shrink: 0 !important;
-    padding: 0.6rem 1rem 1rem 1rem !important;
+    padding: 0.5rem 1rem 0.75rem 1rem !important;
     border-top: 1px solid #e5e7eb !important;
     background: #ffffff !important;
     margin: 0 !important;
@@ -199,21 +218,13 @@ html, body {
 .st-key-float_panel [data-testid="stChatInput"] [data-baseweb="base-input"] {
     background: #ffffff !important;
 }
-/* Send button — light mode */
-.st-key-float_panel [data-testid="stChatInputSubmitButton"] {
-    background: #f3f4f6 !important;
-    color: #1e1e1e !important;
-    border-radius: 8px !important;
-}
-.st-key-float_panel [data-testid="stChatInputSubmitButton"]:hover { background: #e5e7eb !important; }
-.st-key-float_panel [data-testid="stChatInputSubmitButton"] svg { fill: #1e1e1e !important; color: #1e1e1e !important; }
 .st-key-float_panel [data-testid="stChatInput"] textarea {
     background: #f9fafb !important;
     border: 1.5px solid #d1d5db !important;
     border-radius: 22px !important;
     color: #1e1e1e !important;
     font-size: 0.85rem !important;
-    padding: 0.6rem 1rem !important;
+    padding: 0.55rem 3rem 0.55rem 1rem !important;  /* right room for the button */
 }
 .st-key-float_panel [data-testid="stChatInput"] textarea:focus {
     border-color: #9ca3af !important;
@@ -221,6 +232,24 @@ html, body {
     outline: none !important;
 }
 .st-key-float_panel [data-testid="stChatInput"] textarea::placeholder { color: #9ca3af !important; }
+/* Send button — round, absolutely pinned to the right edge of the input pill */
+.st-key-float_panel [data-testid="stChatInputSubmitButton"] {
+    position: absolute !important;
+    right: 1.45rem !important;
+    bottom: 1.0rem !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #f3f4f6 !important;
+    color: #1e1e1e !important;
+    border-radius: 50% !important;
+    z-index: 2 !important;
+}
+.st-key-float_panel [data-testid="stChatInputSubmitButton"]:hover { background: #e5e7eb !important; }
+.st-key-float_panel [data-testid="stChatInputSubmitButton"] svg { fill: #1e1e1e !important; color: #1e1e1e !important; }
 
 /* Suppress Streamlit's global bottom chat dock */
 [data-testid="stBottomBlockContainer"] { display: none !important; }
@@ -401,6 +430,10 @@ now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
 # Legend open/closed state
 if "legend_open" not in st.session_state:
     st.session_state.legend_open = True
+
+# Chat show/hide state (toggled by the panel header menu button)
+if "chat_open" not in st.session_state:
+    st.session_state.chat_open = True
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -590,19 +623,25 @@ else:
 # ── TRUE FLOATING CONTAINER (right-side UI) ────────────────────────────────────
 panel = st.container(key="float_panel")
 with panel:
+    with st.container(key="panel_header"):
+        head_l, head_r = st.columns([6, 1])
+        with head_l:
+            st.markdown(
+                f"""
+<p style="font-size:0.68rem;color:#6b7280;margin:0;text-transform:uppercase;
+          letter-spacing:0.05em;font-weight:600;">Newham Risk Dashboard</p>
+<p style="font-size:0.72rem;color:#9ca3af;margin:4px 0 0;">{now_str}</p>
+""",
+                unsafe_allow_html=True,
+            )
+        with head_r:
+            chat_toggle_help = "Hide chat" if st.session_state.chat_open else "Show chat"
+            if st.button("☰", key="toggle_chat", help=chat_toggle_help):
+                st.session_state.chat_open = not st.session_state.chat_open
+                st.rerun()
+
     st.markdown(
         f"""
-<div style="padding:1.1rem 1.1rem 0.85rem;border-bottom:1px solid #e5e7eb;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-      <p style="font-size:0.68rem;color:#6b7280;margin:0;text-transform:uppercase;
-                letter-spacing:0.05em;font-weight:600;">Newham Risk Dashboard</p>
-      <p style="font-size:0.72rem;color:#9ca3af;margin:4px 0 0;">{now_str}</p>
-    </div>
-    <span style="font-size:1.1rem;color:#6b7280;cursor:pointer;line-height:1;">☰</span>
-  </div>
-</div>
-
 <div style="padding:0.9rem 1.1rem;border-bottom:1px solid #e5e7eb;">
   <p style="font-size:0.68rem;color:#6b7280;margin:0 0 4px;text-transform:uppercase;
             letter-spacing:0.05em;font-weight:600;">Highest Risk Ward</p>
@@ -626,12 +665,13 @@ with panel:
         unsafe_allow_html=True,
     )
 
-    with st.container(key="chat_log"):
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+    if st.session_state.chat_open:
+        with st.container(key="chat_log"):
+            for msg in st.session_state.messages:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ask about this map…"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.session_state.messages.append({"role": "assistant", "content": analyst_reply(prompt)})
-        st.rerun()
+        if prompt := st.chat_input("Ask about this map…"):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.session_state.messages.append({"role": "assistant", "content": analyst_reply(prompt)})
+            st.rerun()
