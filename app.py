@@ -66,7 +66,7 @@ html, body {
     position: fixed !important;
     right: 20px !important;
     top: 20px !important;
-    bottom: 20px !important;
+    max-height: calc(100vh - 40px) !important;
     width: 350px !important;
     background: #ffffff !important;
     z-index: 999999 !important;
@@ -79,12 +79,10 @@ html, body {
     padding: 0 !important;
 }
 
-/* Inner vertical block fills the full panel height as a flex column */
+/* Panel hugs its content; inner wrapper stays a flex column without forcing height */
 .st-key-float_panel > div {
     display: flex !important;
     flex-direction: column !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
     overflow: hidden !important;
 }
 
@@ -95,10 +93,10 @@ html, body {
 .st-key-float_panel li,
 .st-key-float_panel label { color: #1e1e1e !important; }
 
-/* Scrollable chat history area (nested st.container(key="chat_log"))
-   — grows to fill the panel so the input is pinned to the bottom edge */
+/* Scrollable chat history area (nested st.container(key="chat_log")) */
 .st-key-chat_log {
-    flex: 1 1 auto !important;
+    flex: 0 1 auto !important;
+    max-height: 45vh !important;
     overflow-y: auto !important;
     padding: 0 18px 4px 18px !important;
     min-height: 0 !important;
@@ -107,13 +105,16 @@ html, body {
 .st-key-chat_log::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
 
 /* ━━ LEFT FLOATING LEGEND PANEL (targets st.container(key="legend_panel")) ━━ */
+@keyframes legendIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: none; }
+}
 .st-key-legend_panel {
     position: fixed !important;
     left: 20px !important;
     top: 20px !important;
-    bottom: 20px !important;
     width: 250px !important;
-    background: rgba(255, 255, 255, 0.82) !important;
+    background: rgba(255, 255, 255, 0.60) !important;
     backdrop-filter: blur(10px) saturate(140%) !important;
     -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
     z-index: 999999 !important;
@@ -122,6 +123,7 @@ html, body {
     border: 1px solid rgba(229, 231, 235, 0.8) !important;
     overflow: hidden !important;
     padding: 0 !important;
+    animation: legendIn 0.22s ease-out !important;
 }
 .st-key-legend_panel,
 .st-key-legend_panel p,
@@ -134,7 +136,7 @@ html, body {
     background: transparent !important;
     border: none !important;
     color: #6b7280 !important;
-    padding: 2px 6px !important;
+    padding: 7px 6px 3px !important;
     min-height: 0 !important;
     font-size: 1rem !important;
     line-height: 1 !important;
@@ -153,6 +155,7 @@ html, body {
     left: 20px !important;
     top: 20px !important;
     z-index: 999999 !important;
+    animation: legendIn 0.22s ease-out !important;
 }
 .st-key-open_legend button {
     background: rgba(255,255,255,0.9) !important;
