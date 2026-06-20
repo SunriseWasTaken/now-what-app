@@ -147,6 +147,20 @@ html, body {
     background: #ffffff !important;
     margin: 0 !important;
 }
+/* Force the inner chat-input wrapper white (Streamlit's default is dark) */
+.st-key-float_panel [data-testid="stChatInput"] > div,
+.st-key-float_panel [data-testid="stChatInput"] [data-baseweb="textarea"],
+.st-key-float_panel [data-testid="stChatInput"] [data-baseweb="base-input"] {
+    background: #ffffff !important;
+}
+/* Send button — light mode */
+.st-key-float_panel [data-testid="stChatInputSubmitButton"] {
+    background: #f3f4f6 !important;
+    color: #1e1e1e !important;
+    border-radius: 8px !important;
+}
+.st-key-float_panel [data-testid="stChatInputSubmitButton"]:hover { background: #e5e7eb !important; }
+.st-key-float_panel [data-testid="stChatInputSubmitButton"] svg { fill: #1e1e1e !important; color: #1e1e1e !important; }
 .st-key-float_panel [data-testid="stChatInput"] textarea {
     background: #f9fafb !important;
     border: 1.5px solid #d1d5db !important;
