@@ -66,7 +66,7 @@ html, body {
     position: fixed !important;
     right: 20px !important;
     top: 20px !important;
-    max-height: calc(100vh - 40px) !important;
+    bottom: 20px !important;
     width: 350px !important;
     background: #ffffff !important;
     z-index: 999999 !important;
@@ -79,10 +79,12 @@ html, body {
     padding: 0 !important;
 }
 
-/* Panel hugs its content; inner wrapper stays a flex column without forcing height */
+/* Inner vertical block fills the full panel height as a flex column */
 .st-key-float_panel > div {
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     overflow: hidden !important;
 }
 
@@ -93,10 +95,10 @@ html, body {
 .st-key-float_panel li,
 .st-key-float_panel label { color: #1e1e1e !important; }
 
-/* Scrollable chat history area (nested st.container(key="chat_log")) */
+/* Scrollable chat history area (nested st.container(key="chat_log"))
+   — grows to fill the panel so the input is pinned to the bottom edge */
 .st-key-chat_log {
-    flex: 0 1 auto !important;
-    max-height: 45vh !important;
+    flex: 1 1 auto !important;
     overflow-y: auto !important;
     padding: 0 18px 4px 18px !important;
     min-height: 0 !important;
@@ -109,18 +111,59 @@ html, body {
     position: fixed !important;
     left: 20px !important;
     top: 20px !important;
-    width: 230px !important;
-    background: #ffffff !important;
+    bottom: 20px !important;
+    width: 250px !important;
+    background: rgba(255, 255, 255, 0.82) !important;
+    backdrop-filter: blur(10px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
     z-index: 999999 !important;
     border-radius: 10px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid #e5e7eb !important;
+    border: 1px solid rgba(229, 231, 235, 0.8) !important;
     overflow: hidden !important;
     padding: 0 !important;
 }
 .st-key-legend_panel,
 .st-key-legend_panel p,
 .st-key-legend_panel span { color: #1e1e1e !important; }
+.st-key-legend_panel [data-testid="stHorizontalBlock"] { gap: 0.25rem !important; align-items: center !important; }
+
+/* Legend title-bar icon buttons (share + close) */
+.st-key-share_legend button,
+.st-key-close_legend button {
+    background: transparent !important;
+    border: none !important;
+    color: #6b7280 !important;
+    padding: 2px 6px !important;
+    min-height: 0 !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+}
+.st-key-share_legend button:hover,
+.st-key-close_legend button:hover { color: #1e1e1e !important; background: rgba(0,0,0,0.05) !important; }
+
+/* Layer segmented control — light mode */
+.st-key-layer_select [data-baseweb="button-group"] { background: #f3f4f6 !important; border-radius: 8px !important; }
+.st-key-layer_select button { color: #374151 !important; }
+
+/* Reopen-legend toggle button (shown when legend closed) */
+.st-key-open_legend {
+    position: fixed !important;
+    left: 20px !important;
+    top: 20px !important;
+    z-index: 999999 !important;
+}
+.st-key-open_legend button {
+    background: rgba(255,255,255,0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    color: #1e1e1e !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+}
 
 /* Chat messages — light mode */
 .st-key-float_panel [data-testid="stChatMessage"] {
@@ -187,24 +230,55 @@ SHAPEFILE_PATH = "data/Wards_December_2022_Boundaries_UK_BGC_5935341910977814913
 RISK_CSV_PATH = "data/newham_ward_risk_table_CDEM.csv"
 
 
+def _normalize(s: pd.Series) -> pd.Series:
+    """Min–max scale a Series to [0, 1] (flat → all zeros)."""
+    rng = float(s.max() - s.min())
+    if rng == 0:
+        return s * 0.0
+    return (s - s.min()) / rng
+
+
 @st.cache_data
 def load_risk_data() -> pd.DataFrame:
-    return pd.read_csv(RISK_CSV_PATH)
+    df = pd.read_csv(RISK_CSV_PATH)
+    # ── Continuous "Equity Severity" ──────────────────────────────────────────
+    # The PRD defines the equity gap as the COLLISION of high deprivation (D)
+    # and low mental-health service capacity. In this table M is the inverse
+    # capacity term (higher M = fewer services per capita), so a ward is severe
+    # only when BOTH D and M are high. A product captures that collision and
+    # gives a continuous number that actually supports a gradient.
+    dep = _normalize(df["D"])   # 0 = least deprived → 1 = most deprived
+    cap = _normalize(df["M"])   # 0 = most capacity  → 1 = least capacity
+    df["equity_severity"] = _normalize(dep * cap)
+    return df
 
 
-def _score_color(score: float, min_s: float, max_s: float) -> list[int]:
-    """Semi-transparent teal fill: pale teal (low risk) → deep teal (high risk).
+# ── Layer config ───────────────────────────────────────────────────────────────
+# Risk: continuous R_final, teal ramp. Equity: continuous severity, amber→red ramp.
+TEAL_LOW = (153, 246, 228)   # #99f6e4
+TEAL_HIGH = (15, 118, 110)   # #0f766e
+EQUITY_LOW = (254, 215, 170)  # #fed7aa  pale amber  (low equity gap)
+EQUITY_HIGH = (153, 27, 27)   # #991b1b  deep red    (severe equity gap)
 
-    Single-hue teal ramp keeps red/orange free for a future equity layer.
-    """
+
+def _ramp_color(score: float, min_s: float, max_s: float,
+                low: tuple, high: tuple, a_lo: int = 150, a_hi: int = 190) -> list[int]:
+    """Semi-transparent fill interpolated between two RGB endpoints."""
     span = (max_s - min_s) or 1.0
     t = max(0.0, min(1.0, (score - min_s) / span))
-    # #99f6e4 (pale teal) → #0f766e (deep teal)
-    r = int(153 + t * (15 - 153))
-    g = int(246 + t * (118 - 246))
-    b = int(228 + t * (110 - 228))
-    alpha = int(150 + t * 30)
+    r = int(low[0] + t * (high[0] - low[0]))
+    g = int(low[1] + t * (high[1] - low[1]))
+    b = int(low[2] + t * (high[2] - low[2]))
+    alpha = int(a_lo + t * (a_hi - a_lo))
     return [r, g, b, alpha]
+
+
+def _teal_color(score: float, min_s: float, max_s: float) -> list[int]:
+    return _ramp_color(score, min_s, max_s, TEAL_LOW, TEAL_HIGH, 150, 180)
+
+
+def _equity_color(score: float, min_s: float, max_s: float) -> list[int]:
+    return _ramp_color(score, min_s, max_s, EQUITY_LOW, EQUITY_HIGH, 150, 195)
 
 
 def _geom_to_polygons(geom) -> list[list[list[float]]]:
@@ -219,44 +293,35 @@ def _geom_to_polygons(geom) -> list[list[list[float]]]:
 
 
 @st.cache_data
-def build_polygon_layer_data() -> tuple[list[dict], list[str], list[float]]:
+def load_ward_geometry() -> tuple[list[dict], list[float]]:
     """
-    Load the Dec 2022 UK wards boundaries, reproject EPSG:27700 -> EPSG:4326,
-    filter to Newham (LAD22NM), merge with the CDEM risk CSV on ward name
-    (WD22NM == ward), and emit flat PolygonLayer features coloured by
-    Final Risk Score (R_final_CDEM).
+    Load the Dec 2022 UK wards boundaries once, reproject EPSG:27700 -> EPSG:4326,
+    filter to Newham (LAD22NM), merge with the risk CSV (WD22NM == ward), and
+    return per-ring records carrying both the R_final and equity_flag values so
+    the active layer can be coloured without re-reading the geometry.
 
-    Returns (features, unmatched_csv_wards, [center_lon, center_lat]).
+    Returns (records, [center_lon, center_lat]).
     """
     gdf = gpd.read_file(SHAPEFILE_PATH)
     # CRITICAL: UK national grid -> WGS84 GPS coords for Pydeck
     gdf = gdf.to_crs(epsg=4326)
     newham = gdf[gdf["LAD22NM"] == "Newham"].copy()
 
-    df = load_risk_data()
-    merged = newham.merge(df, left_on="WD22NM", right_on="ward", how="inner")
+    df_local = load_risk_data()
+    merged = newham.merge(df_local, left_on="WD22NM", right_on="ward", how="inner")
 
-    min_s = float(df["R_final_CDEM"].min())
-    max_s = float(df["R_final_CDEM"].max())
-
-    features: list[dict] = []
+    records: list[dict] = []
     for _, row in merged.iterrows():
-        score = float(row["R_final_CDEM"])
-        rank = int(row["rank_CDEM"])
-        color = _score_color(score, min_s, max_s)
         for ring in _geom_to_polygons(row.geometry):
-            features.append(
+            records.append(
                 {
-                    "polygon":    ring,
-                    "ward":       row["ward"],
-                    "score":      round(score, 2),
-                    "rank":       rank,
-                    "fill_color": color,
+                    "polygon":          ring,
+                    "ward":             row["ward"],
+                    "r_final":          float(row["R_final"]),
+                    "equity_flag":      bool(row["equity_flag"]),
+                    "equity_severity":  float(row["equity_severity"]),
                 }
             )
-
-    matched = set(merged["ward"])
-    unmatched = sorted(set(df["ward"]) - matched)
 
     if len(merged):
         center = merged.geometry.union_all().centroid
@@ -264,18 +329,54 @@ def build_polygon_layer_data() -> tuple[list[dict], list[str], list[float]]:
     else:
         center_ll = [0.033, 51.527]
 
-    return features, unmatched, center_ll
+    return records, center_ll
+
+
+def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: float,
+                   esev_min: float, esev_max: float) -> list[dict]:
+    """Colour each ward ring for the active layer (cheap; runs every rerun)."""
+    features: list[dict] = []
+    for rec in records:
+        if layer == "Equity":
+            sev = rec["equity_severity"]
+            color = _equity_color(sev, esev_min, esev_max)
+            value = f"Equity severity: {sev:.2f}"
+        else:  # Risk
+            color = _teal_color(rec["r_final"], rfin_min, rfin_max)
+            value = f"Final Risk Score: {rec['r_final']:.2f}"
+        features.append(
+            {
+                "polygon":    rec["polygon"],
+                "ward":       rec["ward"],
+                "value":      value,
+                "fill_color": color,
+            }
+        )
+    return features
 
 
 df = load_risk_data()
-polygon_data, unmatched_wards, map_center = build_polygon_layer_data()
+ward_records, map_center = load_ward_geometry()
 
-top1 = df.nlargest(1, "R_final_CDEM").iloc[0]
-low1 = df.nsmallest(1, "R_final_CDEM").iloc[0]
-avg_s = df["R_final_CDEM"].mean()
-min_score = float(df["R_final_CDEM"].min())
-max_score = float(df["R_final_CDEM"].max())
+# Active layer (widget below writes to this key; read with a default for first run)
+active_layer = st.session_state.get("layer_select", "Risk")
+
+rfin_min = float(df["R_final"].min())
+rfin_max = float(df["R_final"].max())
+esev_min = float(df["equity_severity"].min())
+esev_max = float(df["equity_severity"].max())
+polygon_data = build_features(
+    ward_records, active_layer, rfin_min, rfin_max, esev_min, esev_max
+)
+
+top1 = df.nlargest(1, "R_final").iloc[0]
+low1 = df.nsmallest(1, "R_final").iloc[0]
+avg_s = df["R_final"].mean()
 now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
+
+# Legend open/closed state
+if "legend_open" not in st.session_state:
+    st.session_state.legend_open = True
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -283,7 +384,7 @@ if "messages" not in st.session_state:
             "role": "assistant",
             "content": (
                 f"Welcome to the Newham Risk Dashboard. The highest-risk ward is "
-                f"**{top1['ward']}** (Final Risk Score **{top1['R_final_CDEM']:.2f}**). "
+                f"**{top1['ward']}** (Final Risk Score **{top1['R_final']:.2f}**). "
                 f"Ask me about any ward or risk factor."
             ),
         }
@@ -296,14 +397,21 @@ def analyst_reply(prompt: str) -> str:
         if ward.lower() in p:
             r = df[df["ward"] == ward].iloc[0]
             return (
-                f"**{ward}** — Final Risk Score **{r['R_final_CDEM']:.2f}** "
+                f"**{ward}** — Final Risk Score **{r['R_final']:.2f}** "
                 f"(rank #{int(r['rank_CDEM'])}/24).  \n"
-                f"IMD {r['imd_score']:,.0f} · Air quality {r['air_quality_combined']:.2f}."
+                f"IMD {r['imd_score']:,.0f} · Air quality {r['air_quality_combined']:.2f} · "
+                f"Equity flagged: {'Yes' if r['equity_flag'] else 'No'}."
             )
     if any(k in p for k in ["highest", "worst", "top", "most"]):
-        return f"Highest risk: **{top1['ward']}** (score **{top1['R_final_CDEM']:.2f}**)."
+        return f"Highest risk: **{top1['ward']}** (score **{top1['R_final']:.2f}**)."
     if any(k in p for k in ["lowest", "safest", "least"]):
-        return f"Lowest risk: **{low1['ward']}** (score **{low1['R_final_CDEM']:.2f}**)."
+        return f"Lowest risk: **{low1['ward']}** (score **{low1['R_final']:.2f}**)."
+    if any(k in p for k in ["equity", "flag", "deprivation", "capacity"]):
+        top_eq = df.nlargest(3, "equity_severity")["ward"].tolist()
+        return (
+            "Equity severity = collision of high deprivation (D) and low service "
+            f"capacity (M). Most severe gaps: **{', '.join(top_eq)}**."
+        )
     if any(k in p for k in ["average", "mean", "borough"]):
         return f"Borough average Final Risk Score: **{avg_s:.2f}**."
     return "Try asking about a specific ward, e.g. *'Tell me about Beckton'*."
@@ -332,8 +440,7 @@ tooltip = {
         "color:#1e1e1e;border:1px solid #e5e7eb;border-radius:8px;"
         "padding:10px 14px;box-shadow:0 4px 12px rgba(0,0,0,0.08);'>"
         "<b>{ward}</b><br/>"
-        "<span style='color:#6b7280;font-size:11px'>Rank #{rank}</span><br/>"
-        "Final Risk Score: <b>{score}</b>"
+        "<span style='color:#374151'>{value}</span>"
         "</div>"
     ),
     "style": {"backgroundColor": "transparent"},
@@ -356,28 +463,78 @@ st.pydeck_chart(
     height=1200,
 )
 
-# ── LEFT FLOATING LEGEND PANEL ─────────────────────────────────────────────────
-legend = st.container(key="legend_panel")
-with legend:
-    st.markdown(
-        f"""
-<div style="padding:0.9rem 1rem 1rem;">
-  <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:0 0 10px;">Legend</p>
+# ── LEFT FLOATING LEGEND PANEL (or reopen toggle) ─────────────────────────────
+def _render_legend_body(layer: str) -> None:
+    if layer == "Equity":
+        st.markdown(
+            """
+<div style="padding:0.2rem 0.9rem 0.9rem;">
   <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
-            letter-spacing:0.05em;font-weight:600;">Final Risk Score (CDEM)</p>
+            letter-spacing:0.05em;font-weight:600;">Equity Severity</p>
+  <div style="height:12px;border-radius:6px;
+              background:linear-gradient(90deg,#fed7aa,#991b1b);margin:0 0 5px;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#6b7280;">
+    <span>Lower</span>
+    <span>Higher</span>
+  </div>
+  <p style="font-size:0.68rem;color:#9ca3af;margin:10px 0 0;line-height:1.4;">
+    Deeper red = collision of high deprivation (D) and low service capacity (M).
+  </p>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+    else:  # Risk
+        st.markdown(
+            f"""
+<div style="padding:0.2rem 0.9rem 0.9rem;">
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Final Risk Score</p>
   <div style="height:12px;border-radius:6px;
               background:linear-gradient(90deg,#99f6e4,#0f766e);margin:0 0 5px;"></div>
   <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#6b7280;">
-    <span>{min_score:.1f}</span>
-    <span>{max_score:.1f}</span>
+    <span>{rfin_min:.1f}</span>
+    <span>{rfin_max:.1f}</span>
   </div>
   <p style="font-size:0.68rem;color:#9ca3af;margin:10px 0 0;line-height:1.4;">
     Deeper teal = higher climate &amp; health risk.
   </p>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
+
+
+if st.session_state.legend_open:
+    legend = st.container(key="legend_panel")
+    with legend:
+        bar_title, bar_share, bar_close = st.columns([6, 1, 1])
+        with bar_title:
+            st.markdown(
+                "<p style='font-size:0.95rem;font-weight:700;color:#1e1e1e;"
+                "margin:0;padding:6px 0 0 4px;'>Legend</p>",
+                unsafe_allow_html=True,
+            )
+        with bar_share:
+            if st.button(":material/ios_share:", key="share_legend", help="Share this dashboard"):
+                st.toast("Dashboard link copied to clipboard.")
+        with bar_close:
+            if st.button("✕", key="close_legend", help="Hide legend"):
+                st.session_state.legend_open = False
+                st.rerun()
+
+        st.segmented_control(
+            "Layer",
+            options=["Risk", "Equity"],
+            default="Risk",
+            key="layer_select",
+            label_visibility="collapsed",
+        )
+        _render_legend_body(active_layer)
+else:
+    if st.button("☰  Legend", key="open_legend"):
+        st.session_state.legend_open = True
+        st.rerun()
 
 # ── TRUE FLOATING CONTAINER (right-side UI) ────────────────────────────────────
 panel = st.container(key="float_panel")
@@ -402,7 +559,7 @@ with panel:
   <div style="display:flex;gap:1.4rem;">
     <div>
       <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Risk Score</p>
-      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">{top1['R_final_CDEM']:.2f}</p>
+      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">{top1['R_final']:.2f}</p>
     </div>
     <div>
       <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Rank</p>
@@ -417,21 +574,6 @@ with panel:
 """,
         unsafe_allow_html=True,
     )
-
-    n_mapped = len(df) - len(unmatched_wards)
-    if unmatched_wards:
-        st.markdown(
-            f"""
-<div style="padding:0.55rem 1.1rem;background:#fffbeb;border-bottom:1px solid #fde68a;">
-  <p style="font-size:0.68rem;color:#92400e;margin:0;line-height:1.4;">
-    Showing {n_mapped} of {len(df)} wards as polygons. {len(unmatched_wards)} wards in the
-    risk table have no boundary match in the 2018 shapefile
-    (e.g. {', '.join(unmatched_wards[:3])}…).
-  </p>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
 
     with st.container(key="chat_log"):
         for msg in st.session_state.messages:
