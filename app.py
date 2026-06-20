@@ -296,14 +296,14 @@ def _geom_to_polygons(geom) -> list[list[list[float]]]:
 
 
 @st.cache_data
-def load_ward_geometry() -> tuple[list[dict], list[float]]:
+def load_ward_geometry() -> tuple[list[dict], list[dict], list[float]]:
     """
     Load the Dec 2022 UK wards boundaries once, reproject EPSG:27700 -> EPSG:4326,
     filter to Newham (LAD22NM), merge with the risk CSV (WD22NM == ward), and
-    return per-ring records carrying both the R_final and equity_flag values so
-    the active layer can be coloured without re-reading the geometry.
+    return per-ring records plus one centroid per ward so the active layer can be
+    coloured (and the equity pins placed) without re-reading the geometry.
 
-    Returns (records, [center_lon, center_lat]).
+    Returns (records, centroids, [center_lon, center_lat]).
     """
     gdf = gpd.read_file(SHAPEFILE_PATH)
     # CRITICAL: UK national grid -> WGS84 GPS coords for Pydeck
@@ -314,6 +314,7 @@ def load_ward_geometry() -> tuple[list[dict], list[float]]:
     merged = newham.merge(df_local, left_on="WD22NM", right_on="ward", how="inner")
 
     records: list[dict] = []
+    centroids: list[dict] = []
     for _, row in merged.iterrows():
         for ring in _geom_to_polygons(row.geometry):
             records.append(
@@ -325,6 +326,15 @@ def load_ward_geometry() -> tuple[list[dict], list[float]]:
                     "equity_severity":  float(row["equity_severity"]),
                 }
             )
+        c = row.geometry.centroid
+        centroids.append(
+            {
+                "ward":             row["ward"],
+                "lon":              float(c.x),
+                "lat":              float(c.y),
+                "equity_severity":  float(row["equity_severity"]),
+            }
+        )
 
     if len(merged):
         center = merged.geometry.union_all().centroid
@@ -332,7 +342,27 @@ def load_ward_geometry() -> tuple[list[dict], list[float]]:
     else:
         center_ll = [0.033, 51.527]
 
-    return records, center_ll
+    return records, centroids, center_ll
+
+
+def build_pins(centroids: list[dict], esev_min: float, esev_max: float) -> list[dict]:
+    """Red/orange equity pins at ward centroids; radius + colour scale with the
+    continuous equity-severity score."""
+    span = (esev_max - esev_min) or 1.0
+    pins: list[dict] = []
+    for c in centroids:
+        sev = c["equity_severity"]
+        t = max(0.0, min(1.0, (sev - esev_min) / span))
+        pins.append(
+            {
+                "position":   [c["lon"], c["lat"]],
+                "ward":       c["ward"],
+                "value":      f"Equity severity: {sev:.2f}",
+                "fill_color": _equity_color(sev, esev_min, esev_max),
+                "radius":     120 + t * 480,  # metres
+            }
+        )
+    return pins
 
 
 def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: float,
@@ -344,6 +374,10 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
             sev = rec["equity_severity"]
             color = _equity_color(sev, esev_min, esev_max)
             value = f"Equity severity: {sev:.2f}"
+        elif layer == "Both":
+            # Polygons stay teal (risk); equity rides on the pin overlay.
+            color = _teal_color(rec["r_final"], rfin_min, rfin_max)
+            value = f"Risk {rec['r_final']:.2f}"
         else:  # Risk
             color = _teal_color(rec["r_final"], rfin_min, rfin_max)
             value = f"Final Risk Score: {rec['r_final']:.2f}"
@@ -359,7 +393,7 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
 
 
 df = load_risk_data()
-ward_records, map_center = load_ward_geometry()
+ward_records, ward_centroids, map_center = load_ward_geometry()
 
 # Active layer (widget below writes to this key; read with a default for first run)
 active_layer = st.session_state.get("layer_select", "Risk")
@@ -371,6 +405,7 @@ esev_max = float(df["equity_severity"].max())
 polygon_data = build_features(
     ward_records, active_layer, rfin_min, rfin_max, esev_min, esev_max
 )
+pin_data = build_pins(ward_centroids, esev_min, esev_max)
 
 top1 = df.nlargest(1, "R_final").iloc[0]
 low1 = df.nsmallest(1, "R_final").iloc[0]
@@ -437,6 +472,24 @@ poly_layer = pdk.Layer(
     highlight_color=[255, 255, 255, 100],
 )
 
+pin_layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=pin_data,
+    get_position="position",
+    get_radius="radius",
+    get_fill_color="fill_color",
+    radius_min_pixels=5,
+    radius_max_pixels=42,
+    stroked=True,
+    get_line_color=[255, 255, 255],
+    line_width_min_pixels=1,
+    pickable=True,
+)
+
+map_layers = [poly_layer]
+if active_layer == "Both":
+    map_layers.append(pin_layer)
+
 tooltip = {
     "html": (
         "<div style='font-family:system-ui;font-size:13px;background:#fff;"
@@ -451,7 +504,7 @@ tooltip = {
 
 st.pydeck_chart(
     pdk.Deck(
-        layers=[poly_layer],
+        layers=map_layers,
         initial_view_state=pdk.ViewState(
             longitude=map_center[0],
             latitude=map_center[1],
@@ -468,7 +521,35 @@ st.pydeck_chart(
 
 # ── LEFT FLOATING LEGEND PANEL (or reopen toggle) ─────────────────────────────
 def _render_legend_body(layer: str) -> None:
-    if layer == "Equity":
+    if layer == "Both":
+        st.markdown(
+            f"""
+<div style="padding:0.2rem 0.9rem 0.9rem;">
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Risk (fill)</p>
+  <div style="height:10px;border-radius:5px;
+              background:linear-gradient(90deg,#99f6e4,#0f766e);margin:0 0 4px;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#6b7280;margin:0 0 12px;">
+    <span>{rfin_min:.1f}</span>
+    <span>{rfin_max:.1f}</span>
+  </div>
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Equity gap (pins)</p>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="width:9px;height:9px;border-radius:50%;background:#fed7aa;
+                 border:1px solid #fff;display:inline-block;flex-shrink:0;"></span>
+    <span style="width:15px;height:15px;border-radius:50%;background:#991b1b;
+                 border:1px solid #fff;display:inline-block;flex-shrink:0;"></span>
+    <span style="font-size:0.72rem;color:#374151;">smaller/pale to larger/red</span>
+  </div>
+  <p style="font-size:0.68rem;color:#9ca3af;margin:10px 0 0;line-height:1.4;">
+    Teal wards show risk; red pins mark the equity gap (size + colour = severity).
+  </p>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+    elif layer == "Equity":
         st.markdown(
             """
 <div style="padding:0.2rem 0.9rem 0.9rem;">
@@ -528,7 +609,7 @@ if st.session_state.legend_open:
 
         st.segmented_control(
             "Layer",
-            options=["Risk", "Equity"],
+            options=["Risk", "Equity", "Both"],
             default="Risk",
             key="layer_select",
             label_visibility="collapsed",
