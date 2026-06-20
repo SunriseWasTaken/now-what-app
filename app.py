@@ -97,6 +97,8 @@ html, body {
 .st-key-float_panel label { color: #1e1e1e !important; }
 
 /* ━━ LEADERBOARD (right panel) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* Keep the header block at its natural height; only the leaderboard list grows. */
+.st-key-float_panel > div:has(> .st-key-panel_header) { flex: 0 0 auto !important; }
 /* Let the leaderboard markdown element fill the panel below the header so its
    internal list scrolls instead of the whole panel. */
 .st-key-float_panel > div > [data-testid="stElementContainer"]:last-child {
@@ -113,10 +115,13 @@ html, body {
     flex-direction: column !important;
 }
 
-/* Scroll container — scrollbar pinned to the LEFT via rtl, content stays ltr */
+/* Scroll container — scrollbar pinned to the LEFT via rtl, content stays ltr.
+   Explicit max-height (panel is 80vh, header ≈ 64px) guarantees the list
+   overflows and shows a scrollbar regardless of the flex chain. */
 .lb-scroll {
     flex: 1 1 auto !important;
     min-height: 0 !important;
+    max-height: calc(80vh - 64px) !important;
     overflow-y: auto !important;
     direction: rtl !important;
 }
