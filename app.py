@@ -66,7 +66,7 @@ html, body {
     position: fixed !important;
     right: 20px !important;
     top: 20px !important;
-    bottom: 20px !important;
+    max-height: calc(100vh - 40px) !important;
     width: 350px !important;
     background: #ffffff !important;
     z-index: 999999 !important;
@@ -79,11 +79,10 @@ html, body {
     padding: 0 !important;
 }
 
-/* Panel inner wrapper fills height for bottom-pinned chat */
+/* Panel hugs its content; inner wrapper stays a flex column without forcing height */
 .st-key-float_panel > div {
     display: flex !important;
     flex-direction: column !important;
-    height: 100% !important;
     overflow: hidden !important;
 }
 
@@ -96,7 +95,8 @@ html, body {
 
 /* Scrollable chat history area (nested st.container(key="chat_log")) */
 .st-key-chat_log {
-    flex: 1 1 auto !important;
+    flex: 0 1 auto !important;
+    max-height: 45vh !important;
     overflow-y: auto !important;
     padding: 0 18px 4px 18px !important;
     min-height: 0 !important;
