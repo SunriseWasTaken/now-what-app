@@ -61,6 +61,26 @@ html, body {
     border: none !important;
 }
 
+/* ── Split view: two half-screen maps side by side ── */
+.st-key-map_left [data-testid="stDeckGlJsonChart"] { left: 0 !important; width: 50vw !important; }
+.st-key-map_left [data-testid="stDeckGlJsonChart"] iframe { width: 50vw !important; }
+.st-key-map_right [data-testid="stDeckGlJsonChart"] { left: 50vw !important; width: 50vw !important; }
+.st-key-map_right [data-testid="stDeckGlJsonChart"] iframe { width: 50vw !important; }
+.split-divider {
+    position: fixed; top: 0; left: 50vw; width: 3px; height: 100vh;
+    background: #ffffff; box-shadow: 0 0 8px rgba(0,0,0,0.15);
+    z-index: 3; transform: translateX(-1.5px);
+}
+.split-label {
+    position: fixed; top: 18px; z-index: 5;
+    background: rgba(255,255,255,0.94); border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 6px 16px; font-size: 0.8rem; font-weight: 700; color: #1e1e1e;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.split-label-left  { left: 25vw; transform: translateX(-50%); }
+.split-label-right { left: 75vw; transform: translateX(-50%); }
+
 /* ━━ TRUE FLOATING CONTAINER (targets st.container(key="float_panel")) ━━ */
 .st-key-float_panel {
     position: fixed !important;
@@ -126,9 +146,11 @@ html, body {
     direction: rtl !important;
 }
 .lb-inner { direction: ltr !important; padding: 12px 14px 14px 14px !important; }
-.lb-scroll::-webkit-scrollbar { width: 6px; }
-.lb-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-.lb-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.lb-scroll::-webkit-scrollbar { width: 8px; }
+.lb-scroll::-webkit-scrollbar-track { background: #f1f3f5; border-radius: 4px; }
+.lb-scroll::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 4px; }
+.lb-scroll::-webkit-scrollbar-thumb:hover { background: #374151; }
+.lb-scroll { scrollbar-color: #6b7280 #f1f3f5; scrollbar-width: thin; }
 
 /* Featured #1 card — larger, emphasised */
 .lb-feature {
@@ -631,7 +653,6 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
 # default so the very first run before the widget mounts still works).
 selected_borough = st.session_state.get("borough_select", DEFAULT_BOROUGH)
 df = load_risk_data(selected_borough)
-ward_records, map_center = load_ward_geometry(selected_borough)
 
 # Active layer (widget below writes to this key; read with a default for first run)
 active_layer = st.session_state.get("layer_select", "Risk")
@@ -640,9 +661,6 @@ rfin_min = float(df["R_final"].min())
 rfin_max = float(df["R_final"].max())
 esev_min = float(df["equity_severity"].min())
 esev_max = float(df["equity_severity"].max())
-polygon_data = build_features(
-    ward_records, active_layer, rfin_min, rfin_max, esev_min, esev_max
-)
 
 now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
 
@@ -654,23 +672,7 @@ if "legend_open" not in st.session_state:
 if "panel_open" not in st.session_state:
     st.session_state.panel_open = True
 
-# ── FULL-SCREEN MAP (PolygonLayer, light basemap) ─────────────────────────────
-poly_layer = pdk.Layer(
-    "PolygonLayer",
-    data=polygon_data,
-    get_polygon="polygon",
-    get_fill_color="fill_color",
-    get_line_color=[255, 255, 255],
-    line_width_min_pixels=1,
-    line_width_max_pixels=1,
-    stroked=True,
-    filled=True,
-    extruded=False,
-    pickable=True,
-    auto_highlight=True,
-    highlight_color=[255, 255, 255, 100],
-)
-
+# ── MAP (PolygonLayer, light basemap) ─────────────────────────────────────────
 tooltip = {
     "html": (
         "<div style='font-family:system-ui;font-size:13px;background:#fff;"
@@ -683,25 +685,72 @@ tooltip = {
     "style": {"backgroundColor": "transparent"},
 }
 
-st.pydeck_chart(
-    pdk.Deck(
-        layers=[poly_layer],
+
+def make_deck(borough: str, layer: str) -> pdk.Deck:
+    """Build a self-contained deck for a borough so the same renderer powers both
+    the single full-screen map and each half of the split view."""
+    bdf = load_risk_data(borough)
+    brecords, bcenter = load_ward_geometry(borough)
+    rmin, rmax = float(bdf["R_final"].min()), float(bdf["R_final"].max())
+    emin, emax = float(bdf["equity_severity"].min()), float(bdf["equity_severity"].max())
+    feats = build_features(brecords, layer, rmin, rmax, emin, emax)
+    poly = pdk.Layer(
+        "PolygonLayer",
+        data=feats,
+        get_polygon="polygon",
+        get_fill_color="fill_color",
+        get_line_color=[255, 255, 255],
+        line_width_min_pixels=1,
+        line_width_max_pixels=1,
+        stroked=True,
+        filled=True,
+        extruded=False,
+        pickable=True,
+        auto_highlight=True,
+        highlight_color=[255, 255, 255, 100],
+    )
+    return pdk.Deck(
+        layers=[poly],
         initial_view_state=pdk.ViewState(
-            longitude=map_center[0],
-            latitude=map_center[1],
-            zoom=BOROUGHS[selected_borough]["zoom"],
+            longitude=bcenter[0],
+            latitude=bcenter[1],
+            zoom=BOROUGHS[borough]["zoom"],
             pitch=0,
             bearing=0,
         ),
         tooltip=tooltip,
         map_style="light",
-    ),
-    use_container_width=True,
-    height=1200,
-    # Re-key per borough so the deck remounts and re-applies the centred view
-    # when the borough toggle changes (initial_view_state only binds on mount).
-    key=f"deck_{selected_borough}",
-)
+    )
+
+
+split_view = st.session_state.get("split_view", False)
+
+if split_view:
+    with st.container(key="map_left"):
+        st.pydeck_chart(
+            make_deck("Newham", active_layer),
+            use_container_width=True, height=1200, key="deck_left",
+        )
+    with st.container(key="map_right"):
+        st.pydeck_chart(
+            make_deck("Kensington & Chelsea", active_layer),
+            use_container_width=True, height=1200, key="deck_right",
+        )
+    st.markdown(
+        '<div class="split-label split-label-left">Newham</div>'
+        '<div class="split-label split-label-right">Kensington &amp; Chelsea</div>'
+        '<div class="split-divider"></div>',
+        unsafe_allow_html=True,
+    )
+else:
+    st.pydeck_chart(
+        make_deck(selected_borough, active_layer),
+        use_container_width=True,
+        height=1200,
+        # Re-key per borough so the deck remounts and re-applies the centred view
+        # when the borough toggle changes (initial_view_state only binds on mount).
+        key=f"deck_{selected_borough}",
+    )
 
 # ── LEFT FLOATING LEGEND PANEL (or reopen toggle) ─────────────────────────────
 def _render_legend_body(layer: str) -> None:
@@ -794,7 +843,11 @@ if st.session_state.legend_open:
             "Select Borough",
             options=list(BOROUGHS.keys()),
             key="borough_select",
+            disabled=split_view,
+            help="Disabled in split view (both boroughs are shown)." if split_view else None,
         )
+
+        st.toggle("Split view · Newham vs K&C", key="split_view")
 
         st.segmented_control(
             "Layer",
@@ -810,8 +863,10 @@ else:
         st.rerun()
 
 # ── TRUE FLOATING CONTAINER (right-side UI) ────────────────────────────────────
-panel = st.container(key="float_panel")
-with panel:
+# Hidden in split view so it doesn't cover the right-hand (K&C) map.
+if not split_view:
+  panel = st.container(key="float_panel")
+  with panel:
     with st.container(key="panel_header"):
         head_l, head_r = st.columns([6, 1])
         with head_l:
@@ -837,7 +892,7 @@ with panel:
 
 # Hide the ENTIRE right overlay (fade + slide) when closed; show a reopen toggle.
 # The panel stays mounted so the transition animates; the toggle brings it back.
-if not st.session_state.panel_open:
+if not split_view and not st.session_state.panel_open:
     st.markdown(
         "<style>.st-key-float_panel{opacity:0 !important;"
         "transform:translateX(24px) scale(0.98) !important;pointer-events:none !important;}</style>",
