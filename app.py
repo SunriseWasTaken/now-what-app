@@ -13,16 +13,29 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── CSS ────────────────────────────────────────────────────────────────────────
+# ── Global light theme + floating container CSS ────────────────────────────────
 st.markdown(
     """
 <style>
+/* ── Strict light mode ── */
+:root { color-scheme: light !important; }
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"],
+[data-testid="block-container"], html, body {
+    background: #f5f6f8 !important;
+    color: #1e1e1e !important;
+}
+
+/* ── Hide Streamlit chrome ── */
 #MainMenu, header, footer,
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
 [data-testid="stStatusWidget"] { display: none !important; }
 
-html, body { height: 100vh; overflow: hidden; margin: 0; background: #eef1f4; }
+html, body {
+    height: 100vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+}
 
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
@@ -31,131 +44,108 @@ html, body { height: 100vh; overflow: hidden; margin: 0; background: #eef1f4; }
     max-width: 100% !important;
     padding: 0 !important;
     overflow: hidden !important;
-    background: transparent !important;
 }
 
-[data-testid="stHorizontalBlock"] {
-    height: 100vh !important;
-    gap: 0 !important;
-    flex-wrap: nowrap !important;
-    align-items: stretch !important;
-    position: relative !important;
-}
-
-/* ── Map column (middle) — full-screen background ── */
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(2) {
+/* ── Full-screen map (deck.gl canvas) ── */
+[data-testid="stDeckGlJsonChart"],
+.stDeckGlJsonChart {
     position: fixed !important;
-    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
     z-index: 1 !important;
-    padding: 0 !important;
 }
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(2) iframe,
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(2) .stDeckGlJsonChart {
-    height: 100vh !important;
+[data-testid="stDeckGlJsonChart"] iframe,
+.stDeckGlJsonChart iframe {
     width: 100vw !important;
+    height: 100vh !important;
     border: none !important;
-    display: block !important;
 }
 
-/* ── Legend panel (left) ── */
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child {
+/* ━━ TRUE FLOATING CONTAINER (targets st.container(key="float_panel")) ━━ */
+.st-key-float_panel {
     position: fixed !important;
-    top: 20px !important;
-    left: 20px !important;
-    width: 280px !important;
-    min-width: 280px !important;
-    max-width: 280px !important;
-    z-index: 999 !important;
-    padding: 0 !important;
-    background: rgba(255, 255, 255, 0.92) !important;
-    backdrop-filter: blur(12px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.7) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.10) !important;
-    overflow: hidden !important;
-}
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child > div {
-    padding: 18px 16px !important;
-}
-
-/* ── Chat panel (right) ── */
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child {
-    position: fixed !important;
-    top: 20px !important;
     right: 20px !important;
+    top: 20px !important;
     bottom: 20px !important;
-    width: 380px !important;
-    min-width: 380px !important;
-    max-width: 380px !important;
-    z-index: 999 !important;
-    padding: 0 !important;
+    width: 350px !important;
+    background: #ffffff !important;
+    z-index: 999999 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid #e5e7eb !important;
+    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    background: rgba(255, 255, 255, 0.92) !important;
-    backdrop-filter: blur(12px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.7) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.10) !important;
-    overflow: hidden !important;
+    padding: 0 !important;
 }
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child > div {
+
+/* Panel inner wrapper fills height for bottom-pinned chat */
+.st-key-float_panel > div {
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
-    padding: 0 !important;
     overflow: hidden !important;
 }
 
-/* Chat scroll area */
-.chat-scroll {
-    flex: 1 !important;
+/* Dark text inside panel (light mode) */
+.st-key-float_panel,
+.st-key-float_panel p,
+.st-key-float_panel span,
+.st-key-float_panel li,
+.st-key-float_panel label { color: #1e1e1e !important; }
+
+/* Scrollable chat history area */
+.panel-scroll {
+    flex: 1 1 auto !important;
     overflow-y: auto !important;
-    padding: 0 18px 8px 18px !important;
+    padding: 0 18px 4px 18px !important;
 }
-.chat-scroll::-webkit-scrollbar { width: 3px; }
-.chat-scroll::-webkit-scrollbar-thumb { background: #dde3ea; border-radius: 3px; }
+.panel-scroll::-webkit-scrollbar { width: 4px; }
+.panel-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
 
-/* Chat messages */
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child [data-testid="stChatMessage"] {
-    background: transparent !important;
-    border: none !important;
-    padding: 4px 0 !important;
-    margin-bottom: 2px !important;
+/* Chat messages — light mode */
+.st-key-float_panel [data-testid="stChatMessage"] {
+    background: #f9fafb !important;
+    border: 1px solid #eceef1 !important;
+    border-radius: 10px !important;
+    padding: 0.55rem 0.8rem !important;
+    margin-bottom: 0.4rem !important;
 }
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child [data-testid="stChatMessage"] p,
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child [data-testid="stChatMessage"] li {
-    font-size: 0.84rem !important;
-    line-height: 1.55 !important;
-    color: #334155 !important;
+.st-key-float_panel [data-testid="stChatMessage"] p,
+.st-key-float_panel [data-testid="stChatMessage"] li {
+    font-size: 0.85rem !important;
+    line-height: 1.5 !important;
+    color: #1e1e1e !important;
 }
 
-/* Chat input pinned inside panel */
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child [data-testid="stChatInput"] {
+/* Chat input — pinned at bottom of the floating container, light mode */
+.st-key-float_panel [data-testid="stChatInput"] {
     position: relative !important;
     bottom: auto !important;
-    padding: 10px 14px 14px 14px !important;
-    border-top: 1px solid #eef2f6 !important;
-    background: rgba(255,255,255,0.95) !important;
+    flex-shrink: 0 !important;
+    padding: 0.6rem 1rem 1rem 1rem !important;
+    border-top: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
     margin: 0 !important;
 }
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child [data-testid="stChatInput"] textarea {
-    border-radius: 24px !important;
-    border: 1.5px solid #e2e8f0 !important;
-    background: #f8fafc !important;
-    font-size: 0.84rem !important;
-    color: #1e293b !important;
-    padding: 10px 16px !important;
+.st-key-float_panel [data-testid="stChatInput"] textarea {
+    background: #f9fafb !important;
+    border: 1.5px solid #d1d5db !important;
+    border-radius: 22px !important;
+    color: #1e1e1e !important;
+    font-size: 0.85rem !important;
+    padding: 0.6rem 1rem !important;
 }
-[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child [data-testid="stChatInput"] textarea:focus {
-    border-color: #94a3b8 !important;
-    box-shadow: none !important;
+.st-key-float_panel [data-testid="stChatInput"] textarea:focus {
+    border-color: #9ca3af !important;
+    box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.2) !important;
+    outline: none !important;
 }
+.st-key-float_panel [data-testid="stChatInput"] textarea::placeholder { color: #9ca3af !important; }
 
-/* Hide global chat input dock if Streamlit renders one */
+/* Suppress Streamlit's global bottom chat dock */
 [data-testid="stBottomBlockContainer"] { display: none !important; }
 </style>
 """,
@@ -198,6 +188,7 @@ def load_risk_data() -> pd.DataFrame:
 
 @st.cache_data
 def build_polygon_layer_data(df: pd.DataFrame) -> list[dict]:
+    """Voronoi-tessellate ward centroids into flat polygons coloured by Final Risk Score."""
     risk = {
         row["ward"]: (float(row["R_final_CDEM"]), int(row["rank_CDEM"]))
         for _, row in df.iterrows()
@@ -216,18 +207,17 @@ def build_polygon_layer_data(df: pd.DataFrame) -> list[dict]:
     min_s, max_s = min(scores), max(scores)
 
     def score_color(score: float) -> list[int]:
+        """Semi-transparent fill: cool blue (low risk) → warm red (high risk)."""
         t = max(0.0, min(1.0, (score - min_s) / (max_s - min_s)))
-        # Purple (low) → teal (high) — matches target legend aesthetic
-        r = int(94  + t * (45  - 94))
-        g = int(39  + t * (212 - 39))
-        b = int(130 + t * (191 - 130))
-        a = int(160 + t * 40)
-        return [r, g, b, a]
+        r = int(59 + t * (239 - 59))
+        g = int(130 + t * (68 - 130))
+        b = int(246 + t * (68 - 246))
+        alpha = int(90 + t * 80)
+        return [r, g, b, alpha]
 
     features = []
     for i, name in enumerate(ward_names):
-        region_idx = vor.point_region[i]
-        region = vor.regions[region_idx]
+        region = vor.regions[vor.point_region[i]]
         if not region or -1 in region:
             continue
         poly = Polygon([vor.vertices[j] for j in region]).intersection(clip)
@@ -244,7 +234,6 @@ def build_polygon_layer_data(df: pd.DataFrame) -> list[dict]:
                 "score":      round(score, 2),
                 "rank":       rank,
                 "fill_color": score_color(score),
-                "line_color": [255, 255, 255, 180],
             }
         )
     return features
@@ -254,11 +243,8 @@ df = load_risk_data()
 polygon_data = build_polygon_layer_data(df)
 
 top1 = df.nlargest(1, "R_final_CDEM").iloc[0]
-min_score = df["R_final_CDEM"].min()
-max_score = df["R_final_CDEM"].max()
+low1 = df.nsmallest(1, "R_final_CDEM").iloc[0]
 avg_s = df["R_final_CDEM"].mean()
-n_eq = int(df["equity_flag"].sum())
-n_hdep = int(df["high_deprivation"].sum())
 now_str = datetime.now().strftime("%b %d, %Y at %-I:%M %p")
 
 if "messages" not in st.session_state:
@@ -266,10 +252,9 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": (
-                f"The **Final Risk Score (CDEM)** layer shows ward-level climate and health "
-                f"risk across Newham. The highest-risk ward is **{top1['ward']}** "
-                f"(score **{top1['R_final_CDEM']:.2f}**, rank #1 of 24).\n\n"
-                f"Ask me about any ward, deprivation patterns, air quality, or equity flags."
+                f"Welcome to the Newham Risk Dashboard. The highest-risk ward is "
+                f"**{top1['ward']}** (Final Risk Score **{top1['R_final_CDEM']:.2f}**). "
+                f"Ask me about any ward or risk factor."
             ),
         }
     ]
@@ -281,149 +266,106 @@ def analyst_reply(prompt: str) -> str:
         if ward.lower() in p:
             r = df[df["ward"] == ward].iloc[0]
             return (
-                f"**{ward}** — CDEM score **{r['R_final_CDEM']:.2f}** "
-                f"(rank #{int(r['rank_CDEM'])}/24).\n\n"
-                f"IMD {r['imd_score']:,.0f} · Air quality {r['air_quality_combined']:.2f} · "
-                f"Equity flagged: {'Yes' if r['equity_flag'] else 'No'}."
+                f"**{ward}** — Final Risk Score **{r['R_final_CDEM']:.2f}** "
+                f"(rank #{int(r['rank_CDEM'])}/24).  \n"
+                f"IMD {r['imd_score']:,.0f} · Air quality {r['air_quality_combined']:.2f}."
             )
-    if any(k in p for k in ["highest", "worst", "top", "most at risk"]):
-        t = df.nlargest(1, "R_final_CDEM").iloc[0]
-        return f"The highest-risk ward is **{t['ward']}** (CDEM **{t['R_final_CDEM']:.2f}**)."
+    if any(k in p for k in ["highest", "worst", "top", "most"]):
+        return f"Highest risk: **{top1['ward']}** (score **{top1['R_final_CDEM']:.2f}**)."
     if any(k in p for k in ["lowest", "safest", "least"]):
-        t = df.nsmallest(1, "R_final_CDEM").iloc[0]
-        return (
-            f"The lowest-risk ward is **{t['ward']}** "
-            f"(CDEM **{t['R_final_CDEM']:.2f}**, rank #{int(t['rank_CDEM'])}/24)."
-        )
+        return f"Lowest risk: **{low1['ward']}** (score **{low1['R_final_CDEM']:.2f}**)."
     if any(k in p for k in ["average", "mean", "borough"]):
-        return f"Borough average CDEM score: **{avg_s:.2f}**."
-    if any(k in p for k in ["deprivation", "imd", "poverty"]):
-        t = df.nlargest(1, "imd_score").iloc[0]
-        return (
-            f"Most deprived: **{t['ward']}** (IMD {t['imd_score']:,.0f}). "
-            f"{n_hdep}/24 wards flagged high deprivation."
-        )
-    if any(k in p for k in ["air", "pollution", "quality"]):
-        t = df.nlargest(1, "air_quality_combined").iloc[0]
-        return f"Worst air quality: **{t['ward']}** (score {t['air_quality_combined']:.2f})."
-    if any(k in p for k in ["equity", "flag"]):
-        flagged = df[df["equity_flag"]]["ward"].tolist()
-        return f"{n_eq} equity-flagged wards: {', '.join(flagged)}."
-    return (
-        "Try asking about a specific ward (e.g. *'Tell me about Beckton'*), "
-        "the highest-risk area, deprivation, or air quality."
-    )
+        return f"Borough average Final Risk Score: **{avg_s:.2f}**."
+    return "Try asking about a specific ward, e.g. *'Tell me about Beckton'*."
 
 
-# ── Layout: legend | map | chat ───────────────────────────────────────────────
-legend_col, map_col, chat_col = st.columns([1, 6, 1.4])
+# ── FULL-SCREEN MAP (PolygonLayer, light basemap) ─────────────────────────────
+poly_layer = pdk.Layer(
+    "PolygonLayer",
+    data=polygon_data,
+    get_polygon="polygon",
+    get_fill_color="fill_color",
+    get_line_color=[255, 255, 255],
+    line_width_min_pixels=1,
+    line_width_max_pixels=1,
+    stroked=True,
+    filled=True,
+    extruded=False,
+    pickable=True,
+    auto_highlight=True,
+    highlight_color=[255, 255, 255, 100],
+)
 
-# ━━ LEGEND (left overlay) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-with legend_col:
-    st.markdown(
-        """
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-  <span style="font-size:0.95rem;font-weight:700;color:#1e293b;">Legend</span>
-  <span style="font-size:1rem;color:#64748b;cursor:pointer;line-height:1;">☰</span>
-</div>
-<p style="font-size:0.72rem;font-weight:600;color:#64748b;margin:0 0 6px;
-          text-transform:uppercase;letter-spacing:0.5px;">
-  Final Risk Score (CDEM)
-</p>
-""",
-        unsafe_allow_html=True,
-    )
+tooltip = {
+    "html": (
+        "<div style='font-family:system-ui;font-size:13px;background:#fff;"
+        "color:#1e1e1e;border:1px solid #e5e7eb;border-radius:8px;"
+        "padding:10px 14px;box-shadow:0 4px 12px rgba(0,0,0,0.08);'>"
+        "<b>{ward}</b><br/>"
+        "<span style='color:#6b7280;font-size:11px'>Rank #{rank}</span><br/>"
+        "Final Risk Score: <b>{score}</b>"
+        "</div>"
+    ),
+    "style": {"backgroundColor": "transparent"},
+}
+
+st.pydeck_chart(
+    pdk.Deck(
+        layers=[poly_layer],
+        initial_view_state=pdk.ViewState(
+            longitude=0.033,
+            latitude=51.527,
+            zoom=12.2,
+            pitch=0,
+            bearing=0,
+        ),
+        tooltip=tooltip,
+        map_style="light",
+    ),
+    use_container_width=True,
+    height=1200,
+)
+
+# ── TRUE FLOATING CONTAINER (right-side UI) ────────────────────────────────────
+panel = st.container(key="float_panel")
+with panel:
     st.markdown(
         f"""
-<div style="margin-bottom:6px;">
-  <div style="height:12px;border-radius:6px;
-              background:linear-gradient(90deg,#5e2782,#2dd4bf);
-              margin-bottom:6px;"></div>
-  <div style="display:flex;justify-content:space-between;
-              font-size:0.72rem;color:#64748b;">
-    <span>{min_score:.1f}</span>
-    <span>{max_score:.1f}</span>
+<div style="padding:1.1rem 1.1rem 0.85rem;border-bottom:1px solid #e5e7eb;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <p style="font-size:0.68rem;color:#6b7280;margin:0;text-transform:uppercase;
+                letter-spacing:0.05em;font-weight:600;">Newham Risk Dashboard</p>
+      <p style="font-size:0.72rem;color:#9ca3af;margin:4px 0 0;">{now_str}</p>
+    </div>
+    <span style="font-size:1.1rem;color:#6b7280;cursor:pointer;line-height:1;">☰</span>
   </div>
 </div>
-<p style="font-size:0.72rem;color:#94a3b8;margin:10px 0 0;line-height:1.4;">
-  Ward polygons coloured by CDEM risk score.<br/>
-  Higher score = greater climate &amp; health risk.
-</p>
-""",
-        unsafe_allow_html=True,
-    )
 
-# ━━ MAP (full-screen background) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-with map_col:
-    poly_layer = pdk.Layer(
-        "PolygonLayer",
-        data=polygon_data,
-        get_polygon="polygon",
-        get_fill_color="fill_color",
-        get_line_color="line_color",
-        line_width_min_pixels=1.5,
-        line_width_max_pixels=2,
-        stroked=True,
-        filled=True,
-        pickable=True,
-        auto_highlight=True,
-        highlight_color=[255, 255, 255, 80],
-    )
-    tooltip = {
-        "html": (
-            "<div style='font-family:system-ui;font-size:13px;background:#fff;"
-            "color:#1e293b;border:1px solid #e2e8f0;border-radius:10px;"
-            "padding:10px 14px;box-shadow:0 4px 12px rgba(0,0,0,0.1);'>"
-            "<b>{ward}</b><br/>"
-            "<span style='color:#64748b;font-size:11px'>Rank #{rank}</span><br/>"
-            "Score: <b style='color:#7c3aed'>{score}</b>"
-            "</div>"
-        ),
-        "style": {"backgroundColor": "transparent"},
-    }
-    st.pydeck_chart(
-        pdk.Deck(
-            layers=[poly_layer],
-            initial_view_state=pdk.ViewState(
-                longitude=0.033,
-                latitude=51.527,
-                zoom=12.2,
-                pitch=0,
-                bearing=0,
-            ),
-            tooltip=tooltip,
-            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-        ),
-        use_container_width=True,
-        height=1080,
-    )
-
-# ━━ CHAT (right overlay) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-with chat_col:
-    st.markdown(
-        f"""
-<div style="display:flex;justify-content:space-between;align-items:center;
-            padding:16px 18px 10px;border-bottom:1px solid #f1f5f9;">
-  <span style="font-size:0.72rem;color:#94a3b8;">{now_str}</span>
-  <span style="font-size:1rem;color:#64748b;cursor:pointer;">☰</span>
-</div>
-<div style="padding:10px 18px 8px;border-bottom:1px solid #f1f5f9;">
-  <p style="font-size:0.72rem;color:#64748b;margin:0 0 2px;
-            text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-    Highest Risk Ward
-  </p>
-  <p style="font-size:0.9rem;font-weight:700;color:#1e293b;margin:0;">
-    {top1['ward']}
-    <span style="font-weight:500;color:#7c3aed;font-size:0.82rem;">
-      &nbsp;·&nbsp;{top1['R_final_CDEM']:.2f}
-    </span>
-  </p>
+<div style="padding:0.9rem 1.1rem;border-bottom:1px solid #e5e7eb;">
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 4px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Highest Risk Ward</p>
+  <p style="font-size:1rem;font-weight:700;color:#1e1e1e;margin:0 0 8px;">{top1['ward']}</p>
+  <div style="display:flex;gap:1.4rem;">
+    <div>
+      <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Risk Score</p>
+      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">{top1['R_final_CDEM']:.2f}</p>
+    </div>
+    <div>
+      <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Rank</p>
+      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">#1 / 24</p>
+    </div>
+    <div>
+      <p style="font-size:0.62rem;color:#9ca3af;margin:0;text-transform:uppercase;">Borough Avg</p>
+      <p style="font-size:0.95rem;font-weight:700;color:#1e1e1e;margin:2px 0 0;">{avg_s:.2f}</p>
+    </div>
+  </div>
 </div>
 """,
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="chat-scroll">', unsafe_allow_html=True)
+    st.markdown('<div class="panel-scroll">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -431,6 +373,5 @@ with chat_col:
 
     if prompt := st.chat_input("Ask about this map…"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        reply = analyst_reply(prompt)
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.session_state.messages.append({"role": "assistant", "content": analyst_reply(prompt)})
         st.rerun()
