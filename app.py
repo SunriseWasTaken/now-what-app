@@ -262,6 +262,7 @@ TEAL_LOW = (153, 246, 228)   # #99f6e4
 TEAL_HIGH = (15, 118, 110)   # #0f766e
 EQUITY_LOW = (254, 215, 170)  # #fed7aa  pale amber  (low equity gap)
 EQUITY_HIGH = (153, 27, 27)   # #991b1b  deep red    (severe equity gap)
+ELEV_SCALE = 4000             # metres of extrusion at max equity severity (Both/3D)
 
 
 def _ramp_color(score: float, min_s: float, max_s: float,
@@ -340,10 +341,14 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
     """Colour each ward ring for the active layer (cheap; runs every rerun)."""
     features: list[dict] = []
     for rec in records:
+        sev = rec["equity_severity"]
         if layer == "Equity":
-            sev = rec["equity_severity"]
             color = _equity_color(sev, esev_min, esev_max)
             value = f"Equity severity: {sev:.2f}"
+        elif layer == "Both":
+            # Polygons stay teal (risk); equity severity drives the extrusion height.
+            color = _teal_color(rec["r_final"], rfin_min, rfin_max)
+            value = f"Risk {rec['r_final']:.2f} · Equity {sev:.2f}"
         else:  # Risk
             color = _teal_color(rec["r_final"], rfin_min, rfin_max)
             value = f"Final Risk Score: {rec['r_final']:.2f}"
@@ -353,6 +358,7 @@ def build_features(records: list[dict], layer: str, rfin_min: float, rfin_max: f
                 "ward":       rec["ward"],
                 "value":      value,
                 "fill_color": color,
+                "elevation":  sev * ELEV_SCALE,
             }
         )
     return features
@@ -421,6 +427,9 @@ def analyst_reply(prompt: str) -> str:
 
 
 # ── FULL-SCREEN MAP (PolygonLayer, light basemap) ─────────────────────────────
+# Both mode turns the choropleth into a 3D cityscape: teal = risk, building
+# height = equity severity, so the tallest towers are the biggest equity gaps.
+is_3d = active_layer == "Both"
 poly_layer = pdk.Layer(
     "PolygonLayer",
     data=polygon_data,
@@ -431,7 +440,9 @@ poly_layer = pdk.Layer(
     line_width_max_pixels=1,
     stroked=True,
     filled=True,
-    extruded=False,
+    extruded=is_3d,
+    get_elevation="elevation",
+    elevation_scale=1,
     pickable=True,
     auto_highlight=True,
     highlight_color=[255, 255, 255, 100],
@@ -456,7 +467,7 @@ st.pydeck_chart(
             longitude=map_center[0],
             latitude=map_center[1],
             zoom=12.2,
-            pitch=0,
+            pitch=45 if is_3d else 0,
             bearing=0,
         ),
         tooltip=tooltip,
@@ -468,7 +479,34 @@ st.pydeck_chart(
 
 # ── LEFT FLOATING LEGEND PANEL (or reopen toggle) ─────────────────────────────
 def _render_legend_body(layer: str) -> None:
-    if layer == "Equity":
+    if layer == "Both":
+        st.markdown(
+            f"""
+<div style="padding:0.2rem 0.9rem 0.9rem;">
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Risk (colour)</p>
+  <div style="height:10px;border-radius:5px;
+              background:linear-gradient(90deg,#99f6e4,#0f766e);margin:0 0 4px;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#6b7280;margin:0 0 12px;">
+    <span>{rfin_min:.1f}</span>
+    <span>{rfin_max:.1f}</span>
+  </div>
+  <p style="font-size:0.68rem;color:#6b7280;margin:0 0 6px;text-transform:uppercase;
+            letter-spacing:0.05em;font-weight:600;">Equity gap (height)</p>
+  <div style="display:flex;align-items:flex-end;gap:6px;height:26px;">
+    <span style="width:11px;height:9px;background:#0f766e;display:inline-block;border-radius:2px 2px 0 0;"></span>
+    <span style="width:11px;height:17px;background:#0f766e;display:inline-block;border-radius:2px 2px 0 0;"></span>
+    <span style="width:11px;height:25px;background:#0f766e;display:inline-block;border-radius:2px 2px 0 0;"></span>
+    <span style="font-size:0.72rem;color:#374151;margin-left:4px;">taller = bigger gap</span>
+  </div>
+  <p style="font-size:0.68rem;color:#9ca3af;margin:10px 0 0;line-height:1.4;">
+    3D cityscape: teal = risk; wards tower up where the equity gap is severe.
+  </p>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+    elif layer == "Equity":
         st.markdown(
             """
 <div style="padding:0.2rem 0.9rem 0.9rem;">
@@ -528,7 +566,7 @@ if st.session_state.legend_open:
 
         st.segmented_control(
             "Layer",
-            options=["Risk", "Equity"],
+            options=["Risk", "Equity", "Both"],
             default="Risk",
             key="layer_select",
             label_visibility="collapsed",
