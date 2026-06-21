@@ -1,3 +1,5 @@
+import os
+
 import geopandas as gpd
 import pandas as pd
 import pydeck as pdk
@@ -10,6 +12,17 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+# Optional Mapbox token for pydeck basemaps in hosted environments (Streamlit secrets
+# or MAPBOX_API_KEY env var). Local dev often works without it.
+_mapbox_key = os.environ.get("MAPBOX_API_KEY", "")
+if not _mapbox_key:
+    try:
+        _mapbox_key = st.secrets.get("MAPBOX_API_KEY", "")
+    except Exception:
+        _mapbox_key = ""
+if _mapbox_key:
+    pdk.settings.mapbox_api_key = _mapbox_key
 
 # ── Global light theme + floating container CSS ────────────────────────────────
 st.markdown(
@@ -254,10 +267,98 @@ html, body {
     color: #1e1e1e !important;
 }
 
-/* Split-view toggle label */
+/* Split-view toggle — white box container; label stays plain (no bold) */
+.st-key-split_view {
+    padding: 8px 12px !important;
+    margin: 0 10px 6px 10px !important;
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+.st-key-split_view label,
+.st-key-legend_panel [data-testid="stToggle"] label,
+.st-key-legend_panel .stCheckbox label {
+    align-items: center !important;
+    gap: 12px !important;
+}
+.st-key-split_view label p,
+.st-key-split_view label span,
 .st-key-legend_panel [data-testid="stToggle"] label p,
 .st-key-legend_panel [data-testid="stToggle"] label span {
     font-size: clamp(0.8rem, 0.65rem + 0.28vw, 1.05rem) !important;
+    color: #374151 !important;
+    font-weight: 400 !important;
+}
+/* Track — OFF: medium-gray rail so the white knob pops */
+.st-key-split_view label > div:first-child,
+.st-key-legend_panel [data-testid="stToggle"] label > div:first-child,
+.st-key-legend_panel .stCheckbox label > div:first-child {
+    position: relative !important;
+    flex-shrink: 0 !important;
+    background: #9ca3af !important;
+    border: 2px solid #374151 !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 999px !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+}
+/* Fallback knob only when Streamlit renders a flat track (no nested circle) */
+.st-key-split_view label > div:first-child:not(:has(> div)):not(:has(> span))::after,
+.st-key-legend_panel .stCheckbox label > div:first-child:not(:has(> div)):not(:has(> span))::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 2px !important;
+    transform: translateY(-50%) !important;
+    width: 18px !important;
+    height: 18px !important;
+    background: #ffffff !important;
+    border: 2px solid #1f2937 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35) !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+.st-key-split_view label:has(input:checked) > div:first-child:not(:has(> div)):not(:has(> span))::after,
+.st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child:not(:has(> div)):not(:has(> span))::after {
+    left: auto !important;
+    right: 2px !important;
+}
+/* Knob — white circle with dark ring + drop shadow */
+.st-key-split_view label > div:first-child > div,
+.st-key-split_view label > div:first-child > span,
+.st-key-legend_panel [data-testid="stToggle"] label > div:first-child > div,
+.st-key-legend_panel [data-testid="stToggle"] label > div:first-child > span,
+.st-key-legend_panel .stCheckbox label > div:first-child > div,
+.st-key-legend_panel .stCheckbox label > div:first-child > span {
+    background: #ffffff !important;
+    border: 2px solid #1f2937 !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35) !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+}
+/* Track — ON: teal rail, knob stays white + visible */
+.st-key-split_view label:has(input:checked) > div:first-child,
+.st-key-legend_panel [data-testid="stToggle"] label:has(input:checked) > div:first-child,
+.st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child {
+    background: #0f766e !important;
+    border-color: #064e3b !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+.st-key-split_view label:has(input:checked) > div:first-child > div,
+.st-key-split_view label:has(input:checked) > div:first-child > span,
+.st-key-legend_panel [data-testid="stToggle"] label:has(input:checked) > div:first-child > div,
+.st-key-legend_panel [data-testid="stToggle"] label:has(input:checked) > div:first-child > span,
+.st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child > div,
+.st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child > span {
+    background: #ffffff !important;
+    border-color: #064e3b !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Legend gradient body — overrides inline rem sizes on large screens */
@@ -480,7 +581,7 @@ html, body {
     unsafe_allow_html=True,
 )
 
-SHAPEFILE_PATH = "data/Wards_December_2022_Boundaries_UK_BGC_5935341910977814913.geojson"
+SHAPEFILE_PATH = "data/wards_newham_kc.geojson"
 
 # ── Borough config — each entry drives the risk CSV, the shapefile (LAD22NM)
 # filter, and the default map view used when that borough is selected. ─────────

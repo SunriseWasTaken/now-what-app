@@ -1,4 +1,13 @@
 .venv/
 venv/
 __pycache__/
+.DS_Store
 data/.DS_Store
+.netlify/
+.streamlit/secrets.toml
+
+# Ignore bulk/local data by default; allow the small deploy bundle below.
+data/*
+!data/newham_ward_risk_table_CDEM.csv
+!data/kc_ward_risk_table_FINAL.csv
+!data/wards_newham_kc.geojson
