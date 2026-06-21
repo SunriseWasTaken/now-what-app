@@ -4,6 +4,8 @@ Interactive Streamlit dashboard mapping climate and health risk across London wa
 
 Built for the Health in Climate AI Hackathon (London 2026).
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://now-what.streamlit.app)
+
 ## Features
 
 - **Full-screen ward map** — Pydeck polygon choropleth on a light basemap
