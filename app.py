@@ -87,7 +87,7 @@ html, body {
     right: 20px !important;
     top: 20px !important;
     height: 80vh !important;
-    width: 350px !important;
+    width: clamp(350px, 26vw, 560px) !important;
     background: #ffffff !important;
     z-index: 999999 !important;
     border-radius: 10px !important;
@@ -161,18 +161,18 @@ html, body {
     margin-bottom: 14px;
 }
 .lb-feat-top { display: flex; align-items: baseline; gap: 10px; }
-.lb-feat-rank { font-size: 1.5rem; font-weight: 800; color: #0f766e; line-height: 1; }
+.lb-feat-rank { font-size: clamp(1.5rem, 1rem + 0.7vw, 2.2rem); font-weight: 800; color: #0f766e; line-height: 1; }
 .lb-eyebrow {
-    font-size: 0.62rem; color: #6b7280; text-transform: uppercase;
+    font-size: clamp(0.62rem, 0.5rem + 0.22vw, 0.85rem); color: #6b7280; text-transform: uppercase;
     letter-spacing: 0.06em; font-weight: 700;
 }
-.lb-feat-ward { font-size: 1.35rem; font-weight: 800; color: #1e1e1e; margin: 8px 0 12px; line-height: 1.1; }
+.lb-feat-ward { font-size: clamp(1.35rem, 0.95rem + 0.65vw, 2rem); font-weight: 800; color: #1e1e1e; margin: 8px 0 12px; line-height: 1.1; }
 .lb-feat-stats { display: flex; gap: 2rem; }
-.lb-stat-label { font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
-.lb-feat-score { font-size: 1.1rem; font-weight: 800; color: #1e1e1e; margin: 2px 0 0; }
+.lb-stat-label { font-size: clamp(0.6rem, 0.5rem + 0.2vw, 0.8rem); color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+.lb-feat-score { font-size: clamp(1.1rem, 0.85rem + 0.45vw, 1.6rem); font-weight: 800; color: #1e1e1e; margin: 2px 0 0; }
 
 .lb-section {
-    font-size: 0.62rem; color: #9ca3af; text-transform: uppercase;
+    font-size: clamp(0.62rem, 0.5rem + 0.22vw, 0.85rem); color: #9ca3af; text-transform: uppercase;
     letter-spacing: 0.06em; font-weight: 700; margin: 0 2px 8px; 
 }
 
@@ -188,11 +188,11 @@ html, body {
     border: 1px solid #f1f3f5;
 }
 .lb-row:hover { background: #f9fafb; }
-.lb-row-rank { font-size: 0.8rem; font-weight: 700; color: #9ca3af; width: 30px; flex: 0 0 auto; }
-.lb-row-ward { font-size: 0.85rem; font-weight: 600; color: #1e1e1e; flex: 1 1 auto;
+.lb-row-rank { font-size: clamp(0.8rem, 0.65rem + 0.28vw, 1.05rem); font-weight: 700; color: #9ca3af; width: 34px; flex: 0 0 auto; }
+.lb-row-ward { font-size: clamp(0.85rem, 0.7rem + 0.3vw, 1.12rem); font-weight: 600; color: #1e1e1e; flex: 1 1 auto;
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lb-row-bar { width: 6px; height: 18px; border-radius: 3px; flex: 0 0 auto; }
-.lb-row-score { font-size: 0.85rem; font-weight: 700; color: #1e1e1e; width: 42px; text-align: right; flex: 0 0 auto; }
+.lb-row-score { font-size: clamp(0.85rem, 0.7rem + 0.3vw, 1.12rem); font-weight: 700; color: #1e1e1e; width: 48px; text-align: right; flex: 0 0 auto; }
 
 /* ━━ LEFT FLOATING LEGEND PANEL (targets st.container(key="legend_panel")) ━━ */
 @keyframes legendIn {
@@ -204,7 +204,7 @@ html, body {
     left: 20px !important;
     top: 20px !important;
     height: 75vh !important;
-    width: 250px !important;
+    width: clamp(250px, 19vw, 400px) !important;
     background: rgba(255, 255, 255, 0.60) !important;
     z-index: 999999 !important;
     border-radius: 10px !important;
@@ -218,15 +218,34 @@ html, body {
 .st-key-legend_panel p,
 .st-key-legend_panel span { color: #1e1e1e !important; }
 .st-key-legend_panel [data-testid="stHorizontalBlock"] { gap: 0.25rem !important; align-items: center !important; }
+.st-key-legend_panel > div > [data-testid="stHorizontalBlock"]:first-child [data-testid="stMarkdown"] p {
+    font-size: clamp(0.95rem, 0.8rem + 0.35vw, 1.25rem) !important;
+    padding: 6px 0 0 10px !important;
+}
+.st-key-share_legend,
+.st-key-close_legend,
+.st-key-toggle_chat { flex: 0 0 auto !important; }
+
+/* Legend panel text — viewport scaling for Safari / large screens */
+.st-key-legend_panel,
+.st-key-legend_panel p,
+.st-key-legend_panel span,
+.st-key-legend_panel label {
+    -webkit-text-size-adjust: 100% !important;
+}
 
 /* Borough selector inside the legend */
 .st-key-borough_select { padding: 2px 12px 6px 12px !important; }
 .st-key-borough_select label p {
-    font-size: 0.68rem !important;
+    font-size: clamp(0.68rem, 0.55rem + 0.25vw, 0.92rem) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
     font-weight: 600 !important;
     color: #6b7280 !important;
+}
+.st-key-borough_select [data-baseweb="select"] > div,
+.st-key-borough_select [data-baseweb="select"] span {
+    font-size: clamp(0.85rem, 0.7rem + 0.3vw, 1.1rem) !important;
 }
 .st-key-borough_select [data-baseweb="select"] > div {
     background: #ffffff !important;
@@ -235,20 +254,58 @@ html, body {
     color: #1e1e1e !important;
 }
 
-/* Legend title-bar icon buttons (share + close) */
+/* Split-view toggle label */
+.st-key-legend_panel [data-testid="stToggle"] label p,
+.st-key-legend_panel [data-testid="stToggle"] label span {
+    font-size: clamp(0.8rem, 0.65rem + 0.28vw, 1.05rem) !important;
+}
+
+/* Legend gradient body — overrides inline rem sizes on large screens */
+.st-key-legend_panel > div > [data-testid="stElementContainer"]:last-child [data-testid="stMarkdown"] p,
+.st-key-legend_panel > div > [data-testid="stElementContainer"]:last-child [data-testid="stMarkdown"] span {
+    font-size: clamp(0.68rem, 0.55rem + 0.25vw, 0.92rem) !important;
+}
+
+/* Overlay icon buttons — explicit min touch-target + viewport scaling.
+   Safari shrinks flex children with min-height:0; material icons need svg sizing too. */
 .st-key-share_legend button,
-.st-key-close_legend button {
+.st-key-close_legend button,
+.st-key-toggle_chat button {
     background: transparent !important;
     border: none !important;
     color: #6b7280 !important;
-    padding: 7px 6px 3px !important;
-    min-height: 0 !important;
-    font-size: 1rem !important;
-    line-height: 1 !important;
     box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    min-height: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    width: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    height: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    padding: 0 !important;
+    font-size: clamp(1.15rem, 0.9rem + 0.5vw, 1.75rem) !important;
+    line-height: 1 !important;
+    -webkit-text-size-adjust: 100% !important;
 }
 .st-key-share_legend button:hover,
-.st-key-close_legend button:hover { color: #1e1e1e !important; background: rgba(0,0,0,0.05) !important; }
+.st-key-close_legend button:hover,
+.st-key-toggle_chat button:hover {
+    color: #1e1e1e !important;
+    background: rgba(0,0,0,0.05) !important;
+}
+/* Force nested icon/text to inherit the scaled size (Safari material icons) */
+.st-key-share_legend button *,
+.st-key-close_legend button *,
+.st-key-toggle_chat button * {
+    font-size: inherit !important;
+    line-height: 1 !important;
+}
+.st-key-share_legend button svg,
+.st-key-close_legend button svg,
+.st-key-toggle_chat button svg {
+    width: clamp(18px, 1rem + 0.55vw, 28px) !important;
+    height: clamp(18px, 1rem + 0.55vw, 28px) !important;
+}
 
 /* Layer segmented control — light mode (fix blacked-out unselected options) */
 .st-key-layer_select [data-testid="stButtonGroup"],
@@ -267,6 +324,7 @@ html, body {
 }
 .st-key-layer_select button[data-testid="stBaseButton-segmented_control"] p {
     color: #374151 !important;
+    font-size: clamp(0.78rem, 0.62rem + 0.28vw, 1rem) !important;
 }
 /* Selected option: white pill */
 .st-key-layer_select button[data-testid="stBaseButton-segmented_controlActive"] {
@@ -278,6 +336,7 @@ html, body {
 }
 .st-key-layer_select button[data-testid="stBaseButton-segmented_controlActive"] p {
     color: #0f172a !important;
+    font-size: clamp(0.78rem, 0.62rem + 0.28vw, 1rem) !important;
 }
 
 /* Reopen-legend toggle button (shown when legend closed) */
@@ -294,14 +353,16 @@ html, body {
     border-radius: 10px !important;
     color: #1e1e1e !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-    font-size: 0.8rem !important;
+    font-size: clamp(0.9rem, 0.75rem + 0.35vw, 1.2rem) !important;
     font-weight: 600 !important;
+    min-height: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    padding: clamp(8px, 0.5rem + 0.25vw, 12px) clamp(12px, 0.75rem + 0.4vw, 18px) !important;
 }
 
-/* Reopen-panel toggle (shown when the whole right overlay is hidden) */
+/* Reopen-panel toggle — inset left of pydeck +/- zoom controls (top-right) */
 .st-key-open_panel {
     position: fixed !important;
-    right: 20px !important;
+    right: 68px !important;
     top: 20px !important;
     z-index: 999999 !important;
     animation: legendIn 0.22s ease-out !important;
@@ -312,9 +373,11 @@ html, body {
     border-radius: 10px !important;
     color: #1e1e1e !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-    font-size: 1.0rem !important;
+    font-size: clamp(1.1rem, 0.85rem + 0.5vw, 1.6rem) !important;
     font-weight: 600 !important;
-    padding: 6px 12px !important;
+    min-width: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    min-height: clamp(40px, 2.2rem + 0.9vw, 52px) !important;
+    padding: clamp(8px, 0.5rem + 0.25vw, 12px) clamp(12px, 0.75rem + 0.4vw, 18px) !important;
 }
 
 /* Chat messages — light mode */
@@ -337,25 +400,28 @@ html, body {
 
 /* Panel header row (title + functional menu button) */
 .st-key-panel_header {
-    padding: 0.8rem 1.1rem 0.55rem 1.1rem !important;
+    padding: 1rem 0.4rem 0.9rem 1.1rem !important;
     border-bottom: 1px solid #e5e7eb !important;
+    overflow: visible !important;
 }
 .st-key-panel_header [data-testid="stHorizontalBlock"] { gap: 0 !important; align-items: center !important; min-height: 0 !important; }
 .st-key-panel_header [data-testid="stColumn"] { min-height: 0 !important; }
-.st-key-panel_header [data-testid="stColumn"]:last-child { display: flex !important; justify-content: flex-end !important; }
-.st-key-panel_header [data-testid="stElementContainer"],
-.st-key-panel_header [data-testid="stMarkdown"] { margin: 0 !important; }
-.st-key-toggle_chat button {
-    background: transparent !important;
-    border: none !important;
-    color: #6b7280 !important;
-    padding: 2px 6px !important;
-    min-height: 0 !important;
-    font-size: 1.15rem !important;
-    line-height: 1 !important;
-    box-shadow: none !important;
+.st-key-panel_header [data-testid="stColumn"]:last-child {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
-.st-key-toggle_chat button:hover { color: #1e1e1e !important; background: rgba(0,0,0,0.05) !important; }
+.st-key-toggle_chat [data-testid="stElementContainer"] { margin: 0 !important; padding: 0 !important; }
+.st-key-panel_header [data-testid="stElementContainer"],
+.st-key-panel_header [data-testid="stMarkdown"] { margin: 0 !important; -webkit-text-size-adjust: 100% !important; }
+/* Scale the header title + date up on large screens */
+.st-key-panel_header [data-testid="stMarkdown"] p:first-child {
+    font-size: clamp(0.68rem, 0.55rem + 0.25vw, 0.92rem) !important;
+}
+.st-key-panel_header [data-testid="stMarkdown"] p:last-child {
+    font-size: clamp(0.72rem, 0.6rem + 0.25vw, 0.96rem) !important;
+}
 
 /* Chat input — light mode; send button rides at the right end of the pill */
 .st-key-float_panel [data-testid="stChatInput"] {
@@ -827,8 +893,7 @@ if st.session_state.legend_open:
         bar_title, bar_share, bar_close = st.columns([6, 1, 1])
         with bar_title:
             st.markdown(
-                "<p style='font-size:0.95rem;font-weight:700;color:#1e1e1e;"
-                "margin:0;padding:6px 0 0 4px;'>Legend</p>",
+                "<p style='font-weight:700;color:#1e1e1e;margin:0;'>Legend</p>",
                 unsafe_allow_html=True,
             )
         with bar_share:
