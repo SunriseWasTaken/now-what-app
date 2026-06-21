@@ -296,8 +296,8 @@ html, body {
     position: relative !important;
     flex-shrink: 0 !important;
     background: #9ca3af !important;
-    border: 2px solid #374151 !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid #6b7280 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
     border-radius: 999px !important;
     width: 48px !important;
     min-width: 48px !important;
@@ -315,9 +315,9 @@ html, body {
     width: 18px !important;
     height: 18px !important;
     background: #ffffff !important;
-    border: 2px solid #1f2937 !important;
+    border: 1px solid #9ca3af !important;
     border-radius: 50% !important;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
     pointer-events: none !important;
     z-index: 2 !important;
 }
@@ -326,7 +326,7 @@ html, body {
     left: auto !important;
     right: 2px !important;
 }
-/* Knob — white circle with dark ring + drop shadow */
+/* Knob — white circle with light ring + drop shadow */
 .st-key-split_view label > div:first-child > div,
 .st-key-split_view label > div:first-child > span,
 .st-key-legend_panel [data-testid="stToggle"] label > div:first-child > div,
@@ -334,8 +334,8 @@ html, body {
 .st-key-legend_panel .stCheckbox label > div:first-child > div,
 .st-key-legend_panel .stCheckbox label > div:first-child > span {
     background: #ffffff !important;
-    border: 2px solid #1f2937 !important;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35) !important;
+    border: 1px solid #9ca3af !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
     border-radius: 50% !important;
     width: 20px !important;
     height: 20px !important;
@@ -347,8 +347,8 @@ html, body {
 .st-key-legend_panel [data-testid="stToggle"] label:has(input:checked) > div:first-child,
 .st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child {
     background: #0f766e !important;
-    border-color: #064e3b !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    border-color: #0b5c55 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15) !important;
 }
 .st-key-split_view label:has(input:checked) > div:first-child > div,
 .st-key-split_view label:has(input:checked) > div:first-child > span,
@@ -357,8 +357,8 @@ html, body {
 .st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child > div,
 .st-key-legend_panel .stCheckbox label:has(input:checked) > div:first-child > span {
     background: #ffffff !important;
-    border-color: #064e3b !important;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4) !important;
+    border-color: #6b7280 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
 /* Legend gradient body — overrides inline rem sizes on large screens */
